@@ -3,7 +3,6 @@ import pandas as pd
 import geopandas 
 import matplotlib.pyplot as plt
 import contextily as ctx
-from scipy.spatial.distance import squareform, pdist
 
 # import statsmodels.api as sm
 # #import statsmodels.formula.api as smf
@@ -16,7 +15,7 @@ import ukcensusapi.Nomisweb as Nomisweb
 import ukcensusapi.NRScotland as NRScotland
 import ukcensusapi.NISRA as NISRA
 
-from simim.utils import get_shapefile
+from simim.utils import get_shapefile, calc_distances
 
 # TODO ukpopulation
 
@@ -122,12 +121,8 @@ def main():
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
   gdf = get_shapefile(url, cache_dir)
 
-  dists = pd.DataFrame(squareform(pdist(pd.DataFrame({"e": gdf.bng_e, "n": gdf.bng_n}))), columns=gdf.lad16cd.unique(), index=gdf.lad16cd.unique())
-  # turn matrix into table
-  dists = dists.stack().reset_index().rename({"level_0": "orig", "level_1": "dest", 0: "DISTANCE"}, axis=1)
-  # convert to km 
-  dists.DISTANCE = dists.DISTANCE / 1000.0
-  #print(dists.head())
+  dists = calc_distances(gdf)
+  print(dists.head())
 
   # merge with OD
   od_2011 = od_2011.merge(dists, how="left", left_on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"], right_on=["orig", "dest"]).drop(["orig", "dest"], axis=1)

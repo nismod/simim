@@ -10,6 +10,7 @@ import zipfile
 import re
 import geopandas as gpd
 from scipy.stats.stats import pearsonr 
+from scipy.spatial.distance import squareform, pdist
 
 def md5hash(string):
   m = hashlib.md5()
@@ -45,6 +46,17 @@ def get_shapefile(zip_url, cache_dir):
   # can't find a way of reading this directly into geopandas
   zip.extractall(path=cache_dir)
   return gpd.read_file(os.path.join(cache_dir, shapefile))
+
+# TODO split into matrix and table versions?
+def calc_distances(gdf):
+  # for now makes assumptions about column names and units
+  dists = pd.DataFrame(squareform(pdist(pd.DataFrame({"e": gdf.bng_e, "n": gdf.bng_n}))), columns=gdf.lad16cd.unique(), index=gdf.lad16cd.unique())
+  # turn matrix into table
+  dists = dists.stack().reset_index().rename({"level_0": "orig", "level_1": "dest", 0: "DISTANCE"}, axis=1)
+  # convert to km 
+  dists.DISTANCE = dists.DISTANCE / 1000.0
+  return dists
+
 
 def r2(fitted, actual):
   return pearsonr(fitted, actual)[0] ** 2
