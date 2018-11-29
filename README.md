@@ -16,6 +16,9 @@ Once a model has been established with a good fit to the data, the model can the
 
 The primary case study for this work will be the proposed east-west arc [[1]](#references) (a.k.a. Cambridge-Milton Keynes-Oxford corridor).
 
+![East-west arc in the context of GB](doc/img/gb.png)
+_Figure 2. East-west arc in context of GB. LADs included subject to change._
+
 # References
 [1] National Infrastructure Commission, 2017, [Growth Arc – Completed Study](https://www.nic.org.uk/our-work/growth-arc/)
 

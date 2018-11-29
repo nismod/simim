@@ -7,6 +7,7 @@ import pandas as pd
 import requests
 import hashlib
 import zipfile
+import json
 import re
 import geopandas as gpd
 from scipy.stats.stats import pearsonr 
@@ -64,12 +65,13 @@ def r2(fitted, actual):
 def rmse(fitted, actual):
   return np.sqrt(np.mean((fitted - actual) ** 2))
 
-# def get_args():
-#   parser = argparse.ArgumentParser(description="sim demo")
-#   parser.add_argument("-g", "--graphs", action='store_const', const=True, default=False, help="show graphics")
-#   parser.add_argument("-s", "--subset", action='store_const', const=True, default=False, help="subset data")
-#   parser.add_argument("-w", "--write", action='store_const', const=True, default=False, help="save fitted data")
+def get_config():
+  parser = argparse.ArgumentParser(description="spatial interaction model of internal migration")
+  parser.add_argument("-c", "--config", required=True, type=str, metavar="config-file", help="the model configuration file (json). See config/default.json")
 
-#   return parser.parse_args()
+  args = parser.parse_args()
 
+  with open(args.config) as config_file:
+    params = json.load(config_file)
+  return params
 

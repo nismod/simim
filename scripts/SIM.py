@@ -15,19 +15,18 @@ import ukcensusapi.Nomisweb as Nomisweb
 import ukcensusapi.NRScotland as NRScotland
 import ukcensusapi.NISRA as NISRA
 
-from simim.utils import get_shapefile, calc_distances
+from simim.utils import get_shapefile, calc_distances, get_config
 
 # TODO ukpopulation
 
-def main():
+def main(params):
 
   do_graphs = True
-  do_NI = False
+  do_NI = params["coverage"] == "UK"
 
-  cache_dir = "../microsimulation/cache"
-  census_ew = Nomisweb.Nomisweb(cache_dir)
-  census_sc = NRScotland.NRScotland(cache_dir)
-  census_ni = NISRA.NISRA(cache_dir)
+  census_ew = Nomisweb.Nomisweb(params["cache_dir"])
+  census_sc = NRScotland.NRScotland(params["cache_dir"])
+  census_ni = NISRA.NISRA(params["cache_dir"])
 
   # get OD data
   # more up-to-date here (E&W by LAD, Scotland & NI by country)
@@ -119,7 +118,7 @@ def main():
 
   # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
-  gdf = get_shapefile(url, cache_dir)
+  gdf = get_shapefile(url, params["cache_dir"])
 
   dists = calc_distances(gdf)
   print(dists.head())
@@ -250,4 +249,5 @@ def main():
     #fig.savefig("doc/img/sim_basic.png", transparent=True)
 
 if __name__ == "__main__":
-  main()
+  
+  main(get_config())

@@ -9,7 +9,6 @@ addons:
     # since the wheel is not yet provided in Python 3.7
     - gdal-bin
     - libgdal-dev
-    - libpython3.7-dev
 
 language: python
 python: 
