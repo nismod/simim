@@ -227,21 +227,22 @@ def main():
     fig, [[ax1, ax2], [ax3, ax4]] = plt.subplots(nrows=2, ncols=2, figsize=(10, 10), sharex=False, sharey=False)
     #fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(16, 10), sharex=False, sharey=False)
 
-    ax1.set_title("OD matrix (1+log scale)")
+    #fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
+    ax1.set_title("OD matrix (displaced log scale)")
     ax1.imshow(np.log(odmatrix+1), cmap=plt.get_cmap('Greens'))
-    #gravity.yhat.shape = (378,378)
+    gravity.yhat.shape = (378,378)
     #ax2.imshow(np.log(1+gravity.yhat), cmap=plt.get_cmap('Greens'))
     #ax2.imshow(gravity.yhat-odmatrix, cmap=plt.get_cmap('Greens'))
     ax1.xaxis.set_visible(False)
     ax1.yaxis.set_visible(False)
 
-    ax2.set_title("Unconstrained - Fitted vs actual")
+    ax2.set_title("Unconstrained fit: R^2=%.2f" % gravity.pseudoR2)
     ax2.plot(od_2011.MIGRATIONS, gravity.yhat, "b.")
 
-    ax3.set_title("Attraction - Fitted vs actual")
+    ax3.set_title("Attraction constrained fit: R^2=%.2f" % attr.pseudoR2)
     ax3.plot(od_2011.MIGRATIONS, attr.yhat, "k.")
 
-    ax4.set_title("Doubly - Fitted vs actual")
+    ax4.set_title("Doubly constrained fit: R^2=%.2f" % doubly.pseudoR2)
     ax4.plot(od_2011.MIGRATIONS, doubly.yhat, "r.")
 
     #ax3.set_title("Migration vs origin population")
@@ -249,9 +250,9 @@ def main():
 
     # ax4.set_title("Migration vs destination households")
     # ax4.plot(od_2011.HOUSEHOLDS, od_2011.MIGRATIONS, "r.")
-    
+    plt.tight_layout()
     plt.show()
-    #fig.savefig("CaMKOx/sim_inputs.png", transparent=True)
+    fig.savefig("doc/img/sim_basic.png", transparent=True)
 
 if __name__ == "__main__":
   main()
