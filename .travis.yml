@@ -2,6 +2,14 @@ dist: xenial
 cache: packages
 sudo: false
 
+addons:
+  apt:
+    packages:
+    # Required for building fiona from source,
+    # since the wheel is not yet provided in Python 3.7
+    - gdal-bin
+    - libgdal-dev
+
 language: python
 python: 
   - "3.5"
