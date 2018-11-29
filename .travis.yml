@@ -1,0 +1,29 @@
+dist: xenial
+cache: packages
+sudo: false
+
+language: python
+python: 
+  - "3.5"
+  - "3.6"
+  - "3.7"
+  - "3.8-dev"
+
+install:
+  # workaround for 3.7-dev build error: ValueError: bad marshal data (unknown type code)
+  #- pip install distutils-pytest
+  - pip install -r requirements.txt
+script:
+  - ./setup.py test
+
+warnings_are_errors: false
+
+# matrix:
+#   allow_failures:
+#     - python: "3.7-dev"
+
+notifications:
+  email:
+    on_success: change
+    on_failure: change
+

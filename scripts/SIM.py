@@ -16,6 +16,8 @@ import ukcensusapi.Nomisweb as Nomisweb
 import ukcensusapi.NRScotland as NRScotland
 import ukcensusapi.NISRA as NISRA
 
+from simim.utils import get_shapefile
+
 # TODO ukpopulation
 
 def main():
@@ -23,7 +25,7 @@ def main():
   do_graphs = True
   do_NI = False
 
-  cache_dir = "../nismod/microsimulation/cache"
+  cache_dir = "../microsimulation/cache"
   census_ew = Nomisweb.Nomisweb(cache_dir)
   census_sc = NRScotland.NRScotland(cache_dir)
   census_ni = NISRA.NISRA(cache_dir)
@@ -47,7 +49,7 @@ def main():
   #print(od_2011.USUAL_RESIDENCE_CODE.unique())
 
   # TODO convert OD to non-CM LAD (more up to date migration data uses LAD)
-  lookup = pd.read_csv("../UrbCap/data/cache/LAD_lookup.csv")
+  lookup = pd.read_csv("../../UrbCap/data/cache/LAD_lookup.csv")
   #print(lookup.head())
 
   #print(od_2011.head())
@@ -116,10 +118,9 @@ def main():
   hh_2011 = hh_2011.append(hh_2011ni).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
   #print(len(hh_2011))
 
-  # get distances
-  gdf = geopandas.read_file("../Mistral/data/Local_Authority_Districts_December_2016_Ultra_Generalised_Clipped_Boundaries_in_Great_Britain.shp")
-  # doesnt have centroids...
-  #gdf_ni = geopandas.read_file("./data/OSNI_Open_Data_Largescale_Boundaries__Local_Government_Districts_2012.shp")
+  # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
+  url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
+  gdf = get_shapefile(url, cache_dir)
 
   dists = pd.DataFrame(squareform(pdist(pd.DataFrame({"e": gdf.bng_e, "n": gdf.bng_n}))), columns=gdf.lad16cd.unique(), index=gdf.lad16cd.unique())
   # turn matrix into table
@@ -230,7 +231,6 @@ def main():
     #fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
     ax1.set_title("OD matrix (displaced log scale)")
     ax1.imshow(np.log(odmatrix+1), cmap=plt.get_cmap('Greens'))
-    gravity.yhat.shape = (378,378)
     #ax2.imshow(np.log(1+gravity.yhat), cmap=plt.get_cmap('Greens'))
     #ax2.imshow(gravity.yhat-odmatrix, cmap=plt.get_cmap('Greens'))
     ax1.xaxis.set_visible(False)
@@ -252,7 +252,7 @@ def main():
     # ax4.plot(od_2011.HOUSEHOLDS, od_2011.MIGRATIONS, "r.")
     plt.tight_layout()
     plt.show()
-    fig.savefig("doc/img/sim_basic.png", transparent=True)
+    #fig.savefig("doc/img/sim_basic.png", transparent=True)
 
 if __name__ == "__main__":
   main()

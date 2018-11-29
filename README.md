@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/nismod/simim.png?branch=master)](https://travis-ci.org/nismod/simim) [![License](https://img.shields.io/github/license/mashape/apistatus.svg)](https://opensource.org/licenses/MIT)
 # simim - Spatial Interaction Models of Internal Migration
 
 ** **work-in-progress** **
