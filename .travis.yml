@@ -1,4 +1,4 @@
-#dist: xenial
+dist: xenial
 cache: packages
 sudo: false
 
@@ -18,9 +18,10 @@ script:
 
 warnings_are_errors: false
 
-# matrix:
-#   allow_failures:
-#     - python: "3.7-dev"
+matrix:
+  allow_failures:
+    - python: "3.7"
+    - python: "3.8-dev"
 
 notifications:
   email:
