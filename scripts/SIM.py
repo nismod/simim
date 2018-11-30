@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import pandas as pd
 import geopandas 
@@ -47,19 +49,31 @@ def main(params):
   #print(od_2011.USUAL_RESIDENCE_CODE.unique())
 
   # TODO convert OD to non-CM LAD (more up to date migration data uses LAD)
-  lookup = pd.read_csv("../../UrbCap/data/cache/LAD_lookup.csv")
-  #print(lookup.head())
+  lookup = pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
 
+  old_lookup = pd.read_csv("../../UrbCap/data/cache/LAD_lookup.csv") 
+  print(old_lookup.head())
+
+  lad_lookup = lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
+  print(lad_lookup.head())
+  print(len(old_lookup), len(lad_lookup))
   #print(od_2011.head())
-  od_2011 = od_2011.merge(lookup[["CM_GEOGRAPHY_CODE", "GEOGRAPHY_CODE"]], how='left', left_on="ADDRESS_ONE_YEAR_AGO_CODE", right_on="CM_GEOGRAPHY_CODE") \
-    .rename({"GEOGRAPHY_CODE": "O_GEOGRAPHY_CODE"}, axis=1).drop(["CM_GEOGRAPHY_CODE"], axis=1)
-  od_2011 = od_2011.merge(lookup[["CM_GEOGRAPHY_CODE", "GEOGRAPHY_CODE"]], how='left', left_on="USUAL_RESIDENCE_CODE", right_on="CM_GEOGRAPHY_CODE") \
-    .rename({"GEOGRAPHY_CODE": "D_GEOGRAPHY_CODE", "OBS_VALUE": "MIGRATIONS"}, axis=1).drop(["CM_GEOGRAPHY_CODE"], axis=1)
+  print(od_2011.ADDRESS_ONE_YEAR_AGO_CODE.unique())
+  print(od_2011.USUAL_RESIDENCE_CODE.unique())
+  od_2011 = od_2011.merge(lad_lookup, how='left', left_on="ADDRESS_ONE_YEAR_AGO_CODE", right_on="LAD_CM") \
+    .rename({"LAD": "O_GEOGRAPHY_CODE"}, axis=1).drop(["LAD_CM"], axis=1)
+  od_2011 = od_2011.merge(lad_lookup, how='left', left_on="USUAL_RESIDENCE_CODE", right_on="LAD_CM") \
+   .rename({"LAD": "D_GEOGRAPHY_CODE", "OBS_VALUE": "MIGRATIONS"}, axis=1).drop(["LAD_CM"], axis=1)
 
   # ensure blanks arising from Sc/NI not being in lookup are reinstated from original data
-  od_2011.loc[pd.isnull(od_2011.O_GEOGRAPHY_CODE), "O_GEOGRAPHY_CODE"] = od_2011.ADDRESS_ONE_YEAR_AGO_CODE[pd.isnull(od_2011.O_GEOGRAPHY_CODE)]
-  od_2011.loc[pd.isnull(od_2011.D_GEOGRAPHY_CODE), "D_GEOGRAPHY_CODE"] = od_2011.USUAL_RESIDENCE_CODE[pd.isnull(od_2011.D_GEOGRAPHY_CODE)]
+  #od_2011.loc[pd.isnull(od_2011.O_GEOGRAPHY_CODE), "O_GEOGRAPHY_CODE"] = od_2011.ADDRESS_ONE_YEAR_AGO_CODE[pd.isnull(od_2011.O_GEOGRAPHY_CODE)]
+  #od_2011.loc[pd.isnull(od_2011.D_GEOGRAPHY_CODE), "D_GEOGRAPHY_CODE"] = od_2011.USUAL_RESIDENCE_CODE[pd.isnull(od_2011.D_GEOGRAPHY_CODE)]
+
+  od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isnull()) & (~od_2011.O_GEOGRAPHY_CODE.isnull())]
   od_2011.drop(["ADDRESS_ONE_YEAR_AGO_CODE", "USUAL_RESIDENCE_CODE"], axis=1, inplace=True)
+
+  print(od_2011.O_GEOGRAPHY_CODE.unique())
+  print(od_2011.D_GEOGRAPHY_CODE.unique())
 
   # assert False
 
@@ -67,6 +81,8 @@ def main(params):
   # for now just remove City & Scilly
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E09000001") & (od_2011.D_GEOGRAPHY_CODE != "E09000001")]
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E06000053") & (od_2011.D_GEOGRAPHY_CODE != "E06000053")]
+
+  #print(od_2011[od_2011.O_GEOGRAPHY_CODE.str.startswith("95")])
 
   # people - use ukpopulation
   query_params = {
@@ -246,7 +262,7 @@ def main(params):
     # ax4.plot(od_2011.HOUSEHOLDS, od_2011.MIGRATIONS, "r.")
     plt.tight_layout()
     plt.show()
-    #fig.savefig("doc/img/sim_basic.png", transparent=True)
+    fig.savefig("doc/img/sim_basic.png", transparent=True)
 
 if __name__ == "__main__":
   
