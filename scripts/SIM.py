@@ -48,41 +48,35 @@ def main(params):
   od_2011 = census_ew.get_data(table, query_params)
   #print(od_2011.USUAL_RESIDENCE_CODE.unique())
 
-  # TODO convert OD to non-CM LAD (more up to date migration data uses LAD)
+  # # CMLAD codes...
+  # print("E06000048" in od_2011.USUAL_RESIDENCE_CODE.unique())
+  # print("E06000057" in od_2011.USUAL_RESIDENCE_CODE.unique())
+  # # TODO convert OD to non-CM LAD (more up to date migration data uses LAD)
   lookup = pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
 
-  old_lookup = pd.read_csv("../../UrbCap/data/cache/LAD_lookup.csv") 
-  print(old_lookup.head())
-
+  # only need the CMLAD->LAD mapping
   lad_lookup = lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
-  print(lad_lookup.head())
-  print(len(old_lookup), len(lad_lookup))
-  #print(od_2011.head())
-  print(od_2011.ADDRESS_ONE_YEAR_AGO_CODE.unique())
-  print(od_2011.USUAL_RESIDENCE_CODE.unique())
   od_2011 = od_2011.merge(lad_lookup, how='left', left_on="ADDRESS_ONE_YEAR_AGO_CODE", right_on="LAD_CM") \
     .rename({"LAD": "O_GEOGRAPHY_CODE"}, axis=1).drop(["LAD_CM"], axis=1)
   od_2011 = od_2011.merge(lad_lookup, how='left', left_on="USUAL_RESIDENCE_CODE", right_on="LAD_CM") \
    .rename({"LAD": "D_GEOGRAPHY_CODE", "OBS_VALUE": "MIGRATIONS"}, axis=1).drop(["LAD_CM"], axis=1)
 
   # ensure blanks arising from Sc/NI not being in lookup are reinstated from original data
-  #od_2011.loc[pd.isnull(od_2011.O_GEOGRAPHY_CODE), "O_GEOGRAPHY_CODE"] = od_2011.ADDRESS_ONE_YEAR_AGO_CODE[pd.isnull(od_2011.O_GEOGRAPHY_CODE)]
-  #od_2011.loc[pd.isnull(od_2011.D_GEOGRAPHY_CODE), "D_GEOGRAPHY_CODE"] = od_2011.USUAL_RESIDENCE_CODE[pd.isnull(od_2011.D_GEOGRAPHY_CODE)]
+  od_2011.loc[pd.isnull(od_2011.O_GEOGRAPHY_CODE), "O_GEOGRAPHY_CODE"] = od_2011.ADDRESS_ONE_YEAR_AGO_CODE[pd.isnull(od_2011.O_GEOGRAPHY_CODE)]
+  od_2011.loc[pd.isnull(od_2011.D_GEOGRAPHY_CODE), "D_GEOGRAPHY_CODE"] = od_2011.USUAL_RESIDENCE_CODE[pd.isnull(od_2011.D_GEOGRAPHY_CODE)]
 
   od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isnull()) & (~od_2011.O_GEOGRAPHY_CODE.isnull())]
   od_2011.drop(["ADDRESS_ONE_YEAR_AGO_CODE", "USUAL_RESIDENCE_CODE"], axis=1, inplace=True)
 
-  print(od_2011.O_GEOGRAPHY_CODE.unique())
-  print(od_2011.D_GEOGRAPHY_CODE.unique())
-
-  # assert False
+  # #print(od_2011.O_GEOGRAPHY_CODE.unique())
+  # print(od_2011.D_GEOGRAPHY_CODE.unique())
+  # print(len(od_2011.O_GEOGRAPHY_CODE.unique()))
+  # print(len(od_2011.D_GEOGRAPHY_CODE.unique()))
 
   # TODO adjustments for Westminster/City or London and Cornwall/Scilly Isles
   # for now just remove City & Scilly
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E09000001") & (od_2011.D_GEOGRAPHY_CODE != "E09000001")]
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E06000053") & (od_2011.D_GEOGRAPHY_CODE != "E06000053")]
-
-  #print(od_2011[od_2011.O_GEOGRAPHY_CODE.str.startswith("95")])
 
   # people - use ukpopulation
   query_params = {
@@ -100,15 +94,17 @@ def main(params):
   # print(len(p_2011sc))
   p_2011 = p_2011.append(p_2011sc)
 
-  #print(census_ni.get_metadata("KS102NI", "LAD"))
-  p_2011ni = census_ni.get_data("KS102NI", "N92000002", "LAD", category_filters={"KS102NI_0_CODE": 16}).drop("KS102NI_0_CODE", axis=1)
-  #print(p_2011ni.head())
-  p_2011 = p_2011.append(p_2011ni).rename({"OBS_VALUE": "PEOPLE"}, axis=1)
+  if do_NI:
+    #print(census_ni.get_metadata("KS102NI", "LAD"))
+    p_2011ni = census_ni.get_data("KS102NI", "N92000002", "LAD", category_filters={"KS102NI_0_CODE": 16}).drop("KS102NI_0_CODE", axis=1)
+    #print(p_2011ni.head())
+    p_2011 = p_2011.append(p_2011ni)
+
+  p_2011.rename({"OBS_VALUE": "PEOPLE"}, axis=1, inplace=True)
   #print(len(p_2011))
 
   # households
   # get total household counts per LAD
-
   query_params = {
     "date": "latest",
     "RURAL_URBAN": "0",
@@ -125,12 +121,13 @@ def main(params):
   hh_2011 = hh_2011.append(hh_2011sc)
   #print(len(hh_2011))
 
-  hh_2011ni = census_ni.get_data("KS105NI", "N92000002", "LAD", category_filters={"KS105NI_0_CODE": 0}).drop("KS105NI_0_CODE", axis=1)
-  # print(hh_2011ni)
-  # print(len(hh_2011ni))
-
-  hh_2011 = hh_2011.append(hh_2011ni).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
-  #print(len(hh_2011))
+  if do_NI:
+    hh_2011ni = census_ni.get_data("KS105NI", "N92000002", "LAD", category_filters={"KS105NI_0_CODE": 0}).drop("KS105NI_0_CODE", axis=1)
+    # print(hh_2011ni)
+    # print(len(hh_2011ni))
+    hh_2011 = hh_2011.append(hh_2011ni)
+    
+  hh_2011.rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1, inplace=True)
 
   # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
@@ -153,6 +150,7 @@ def main(params):
 
   # remove O=D rows
   od_2011 = od_2011[od_2011.O_GEOGRAPHY_CODE != od_2011.D_GEOGRAPHY_CODE]
+
   # set epsilon dist for O=D rows
   #od_2011.loc[od_2011.O_GEOGRAPHY_CODE == od_2011.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
 
@@ -164,7 +162,8 @@ def main(params):
     odmatrix = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].set_index(["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]).unstack().values
 
   #od_2011.to_csv("od2011.csv", index=False)
-
+  # print(od_2011[od_2011.DISTANCE.isnull()])
+  # stop
 
   # pysal impl
   model = "pow"
@@ -262,7 +261,7 @@ def main(params):
     # ax4.plot(od_2011.HOUSEHOLDS, od_2011.MIGRATIONS, "r.")
     plt.tight_layout()
     plt.show()
-    fig.savefig("doc/img/sim_basic.png", transparent=True)
+    #fig.savefig("doc/img/sim_basic.png", transparent=True)
 
 if __name__ == "__main__":
   
