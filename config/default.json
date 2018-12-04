@@ -1,7 +1,7 @@
 {
   "coverage": "GB",
   "base_projection": "ppp",
-  "start_year": 2020,
+  "start_year": 2018,
   "end_year": 2023,
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data"

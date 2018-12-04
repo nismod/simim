@@ -20,12 +20,15 @@ import ukcensusapi.NISRA as NISRA
 
 from simim.utils import get_shapefile, calc_distances, get_config
 
-# TODO ukpopulation
+import ukpopulation.utils as ukpoputils
 
 def main(params):
 
   do_graphs = True
-  do_NI = params["coverage"] == "UK"
+
+  coverage = { "EW": ukpoputils.EW, "GB": ukpoputils.GB, "UK": ukpoputils.UK}.get(params["coverage"]) 
+  if not coverage:
+    raise RuntimeError("invalid coverage: %s" % params["coverage"])
 
   census_ew = Nomisweb.Nomisweb(params["cache_dir"])
   census_sc = NRScotland.NRScotland(params["cache_dir"])
@@ -38,6 +41,8 @@ def main(params):
   # print("E06000057" in od_2011.USUAL_RESIDENCE_CODE.unique())
   # # TODO convert OD to non-CM LAD (more up to date migration data uses LAD)
   lookup = pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
+
+  # TODO need to remap old NI codes 95.. to N... ones
 
   # only need the CMLAD->LAD mapping
   lad_lookup = lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
@@ -63,10 +68,13 @@ def main(params):
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E09000001") & (od_2011.D_GEOGRAPHY_CODE != "E09000001")]
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E06000053") & (od_2011.D_GEOGRAPHY_CODE != "E06000053")]
 
-  # people
-  p_2011 = data.get_people(census_ew, census_sc, census_ni if do_NI else None)
+  geogs = od_2011.O_GEOGRAPHY_CODE.unique()
 
-  hh_2011 = data.get_households(census_ew, census_sc, census_ni if do_NI else None)
+  # people
+  #p_2011 = data.get_people(census_ew, census_sc, census_ni if do_NI else None)
+  p_2011 = data.get_people(params["start_year"], geogs, params["cache_dir"])
+
+  hh_2011 = data.get_households(census_ew, census_sc, census_ni if ukpoputils.NI in coverage else None)
 
 
   # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
@@ -94,7 +102,7 @@ def main(params):
   # set epsilon dist for O=D rows
   #od_2011.loc[od_2011.O_GEOGRAPHY_CODE == od_2011.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
 
-  if not do_NI:
+  if ukpoputils.NI not in coverage:
     ni = ['95TT', '95XX', '95OO', '95GG', '95DD', '95QQ', '95ZZ', '95VV', '95YY', '95CC',
           '95II', '95NN', '95AA', '95RR', '95MM', '95LL', '95FF', '95BB', '95SS', '95HH',
           '95EE', '95PP', '95UU', '95WW', '95KK', '95JJ']

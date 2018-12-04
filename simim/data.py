@@ -2,6 +2,9 @@
 data download functionality
 """
 
+import ukpopulation.myedata as MYEData
+import ukpopulation.snppdata as SNPPData
+
 def get_od(nomis_api):
 
   # get OD data
@@ -23,32 +26,61 @@ def get_od(nomis_api):
   #print(od_2011.USUAL_RESIDENCE_CODE.unique())
   return od
 
-def get_people(ew_api, sc_api, ni_api):
-    # people - use ukpopulation
-  query_params = {
-    "date": "latest",
-    "RURAL_URBAN": "0",
-    "CELL": "0",
-    "MEASURES": "20100",
-    "geography": "1946157057...1946157404",
-    "select": "GEOGRAPHY_CODE,OBS_VALUE"
-  }
-  population = ew_api.get_data("KS102EW", query_params)
+
+def get_people(year, geogs, cache_dir):
+  # TODO variants...
+  if year <= MYEData.MYEData.MAX_YEAR:
+    datasource = MYEData.MYEData(cache_dir)
+    data = datasource.aggregate(year, geogs, ["GENDER", "C_AGE"])
+  else:
+    # TODO workaround for multiple countries... where is Wales and Scotland?
+    datasource = SNPPData.SNPPData(cache_dir)
+    data = datasource.aggregate(["GENDER", "C_AGE"], geogs, year)
+    wales = [g for g in geogs if g.startswith("W")]
+    if wales:
+      data = data.append(datasource.aggregate(["GENDER", "C_AGE"], wales, year), ignore_index=True)
+    scotland = [g for g in geogs if g.startswith("S")]
+    if scotland: 
+      data = data.append(datasource.aggregate(["GENDER", "C_AGE"], scotland, year), ignore_index=True)
+    nireland = [g for g in geogs if g.startswith("N")]
+    if len(nireland): 
+      # doesnt support old 95.. codes
+      data = data.append(datasource.aggregate(["GENDER", "C_AGE"], nireland, year), ignore_index=True)
+  # TODO: extrapolated SNPP
+  #  raise NotImplementedError("TODO auto-extrapolate SNPP...")
+
+  data = data.rename({"OBS_VALUE": "PEOPLE"}, axis=1).drop("PROJECTED_YEAR_NAME", axis=1)
+
+  print(data.head())
+  print(len(data))
+  return data
+
+# def get_people(ew_api, sc_api, ni_api):
+#     # people - use ukpopulation
+#   query_params = {
+#     "date": "latest",
+#     "RURAL_URBAN": "0",
+#     "CELL": "0",
+#     "MEASURES": "20100",
+#     "geography": "1946157057...1946157404",
+#     "select": "GEOGRAPHY_CODE,OBS_VALUE"
+#   }
+#   population = ew_api.get_data("KS102EW", query_params)
   
-  pop_sc = sc_api.get_data("KS102SC", "S92000003", "LAD", category_filters={"KS102SC_0_CODE": 0}).drop("KS102SC_0_CODE", axis=1)
-  # print(p_2011sc.head())
-  # print(len(p_2011sc))
-  population = population.append(pop_sc)
+#   pop_sc = sc_api.get_data("KS102SC", "S92000003", "LAD", category_filters={"KS102SC_0_CODE": 0}).drop("KS102SC_0_CODE", axis=1)
+#   # print(p_2011sc.head())
+#   # print(len(p_2011sc))
+#   population = population.append(pop_sc)
 
-  if ni_api:
-    #print(census_ni.get_metadata("KS102NI", "LAD"))
-    pop_ni = ni_api.get_data("KS102NI", "N92000002", "LAD", category_filters={"KS102NI_0_CODE": 16}).drop("KS102NI_0_CODE", axis=1)
-    #print(p_2011ni.head())
-    population = population.append(pop_ni)
+#   if ni_api:
+#     #print(census_ni.get_metadata("KS102NI", "LAD"))
+#     pop_ni = ni_api.get_data("KS102NI", "N92000002", "LAD", category_filters={"KS102NI_0_CODE": 16}).drop("KS102NI_0_CODE", axis=1)
+#     #print(p_2011ni.head())
+#     population = population.append(pop_ni)
 
-  population.rename({"OBS_VALUE": "PEOPLE"}, axis=1, inplace=True)
-  #print(len(population))
-  return population
+#   population.rename({"OBS_VALUE": "PEOPLE"}, axis=1, inplace=True)
+#   #print(len(population))
+#   return population
 
 def get_households(ew_api, sc_api, ni_api):
 
