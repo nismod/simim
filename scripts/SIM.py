@@ -133,6 +133,8 @@ def main(params):
   print(np.mean(est_unc - gravity.yhat))
   print(np.sqrt(np.mean((est_unc - gravity.yhat)**2)))
 
+  #od_2011.to_csv("tests/data/test2011.csv.gz", index=False, compression="gzip")
+
   #perturb
   od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] = od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 
   pert_unc = ((np.exp(k) * od_2011.PEOPLE ** mu * od_2011.HOUSEHOLDS ** alpha * od_2011.DISTANCE ** beta).values + 0.5).astype(int)
