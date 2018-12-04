@@ -56,8 +56,8 @@ class Test(TestCase):
       else:
         est_unc = (np.exp(k) * Test.dataset.PEOPLE ** mu * Test.dataset.HOUSEHOLDS ** alpha * np.exp(Test.dataset.DISTANCE * beta)).values
 
-      self.assertTrue(np.mean(est_unc - gravity.yhat) < 2e-16)
-      self.assertTrue(np.sqrt(np.mean((est_unc - gravity.yhat)**2)) < 1e-13)
+      print()
+      self.assertTrue(rmse(est_unc, gravity.yhat) < 1e-13)
 
 if __name__ == "__main__":
   unittest.main()
