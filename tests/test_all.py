@@ -45,37 +45,15 @@ class Test(TestCase):
     self.assertTrue(len(Test.dataset) == 378*377)
 
   def test_gravity(self):
-    for model in ["pow", "exp"]:
-      gravity = Gravity(Test.dataset.MIGRATIONS.values, Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values, Test.dataset.DISTANCE.values, model)
-      k = gravity.params[0]
-      mu = gravity.params[1]
-      alpha = gravity.params[2]
-      beta = gravity.params[3]
-
-      if model == "pow":
-        est_unc = (np.exp(k) * Test.dataset.PEOPLE ** mu * Test.dataset.HOUSEHOLDS ** alpha * Test.dataset.DISTANCE ** beta).values
-      else:
-        est_unc = (np.exp(k) * Test.dataset.PEOPLE ** mu * Test.dataset.HOUSEHOLDS ** alpha * np.exp(Test.dataset.DISTANCE * beta)).values
-
-      self.assertTrue(rmse(est_unc, gravity.yhat) < 1e-13)
-
-  def test_gravity_recalc(self):
     for model_subtype in ["pow", "exp"]:
-      gravity = models.solve("gravity", model_subtype, Test.dataset.MIGRATIONS.values, Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values, Test.dataset.DISTANCE.values)
-      # k = gravity.params[0]
-      # mu = gravity.params[1]
-      # alpha = gravity.params[2]
-      # beta = gravity.params[3]
-
-      # if model == "pow":
-      #   est_unc = (np.exp(k) * Test.dataset.PEOPLE ** mu * Test.dataset.HOUSEHOLDS ** alpha * Test.dataset.DISTANCE ** beta).values
-      # else:
-      #   est_unc = (np.exp(k) * Test.dataset.PEOPLE ** mu * Test.dataset.HOUSEHOLDS ** alpha * np.exp(Test.dataset.DISTANCE * beta)).values
-      
-      # no perturbations should yield yhat
-      ybar = models.recalc("gravity", model_subtype, gravity, Test.dataset.MIGRATIONS.values, Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values, Test.dataset.DISTANCE.values)
-
-      self.assertTrue(rmse(ybar, gravity.yhat) < 1e-13)
+      gravity = models.Model("gravity", model_subtype, Test.dataset.MIGRATIONS.values, 
+                                                       Test.dataset.PEOPLE.values, 
+                                                       Test.dataset.HOUSEHOLDS.values, 
+                                                       Test.dataset.DISTANCE.values)
+      self.assertTrue(rmse(gravity(Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values), gravity.impl.yhat) < 1e-13)
+      Test.dataset["HH_CHANGED"] = Test.dataset.HOUSEHOLDS
+      Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HH_CHANGED"] = Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 
+      self.assertTrue(rmse(gravity(Test.dataset.PEOPLE.values, Test.dataset.HH_CHANGED.values), gravity.impl.yhat) > 1.0)
 
 if __name__ == "__main__":
   unittest.main()

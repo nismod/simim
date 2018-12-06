@@ -59,11 +59,6 @@ def main(params):
   od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isnull()) & (~od_2011.O_GEOGRAPHY_CODE.isnull())]
   od_2011.drop(["ADDRESS_ONE_YEAR_AGO_CODE", "USUAL_RESIDENCE_CODE"], axis=1, inplace=True)
 
-  # #print(od_2011.O_GEOGRAPHY_CODE.unique())
-  # print(od_2011.D_GEOGRAPHY_CODE.unique())
-  # print(len(od_2011.O_GEOGRAPHY_CODE.unique()))
-  # print(len(od_2011.D_GEOGRAPHY_CODE.unique()))
-
   # TODO adjustments for Westminster/City or London and Cornwall/Scilly Isles
   # for now just remove City & Scilly
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E09000001") & (od_2011.D_GEOGRAPHY_CODE != "E09000001")]
@@ -76,7 +71,6 @@ def main(params):
   p_2011 = data.get_people(params["start_year"], geogs, params["cache_dir"])
 
   hh_2011 = data.get_households(census_ew, census_sc, census_ni if ukpoputils.NI in coverage else None)
-
 
   # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
@@ -116,14 +110,14 @@ def main(params):
 
   print("model: %s-IGNORED (%s)" % (params["model_type"], params["model_subtype"]))
 
-  gravity = models.solve("gravity", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values)
+  gravity = models.Model("gravity", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values)
 
-  print("Unconstrained Poisson Fitted R2 = %f" % gravity.pseudoR2)
-  print("Unconstrained Poisson Fitted RMSE = %f" % gravity.SRMSE)
+  print("Unconstrained Poisson Fitted R2 = %f" % gravity.impl.pseudoR2)
+  print("Unconstrained Poisson Fitted RMSE = %f" % gravity.impl.SRMSE)
 
   # model = Production(od_2011.MIGRATIONS.values, od_2011.O_GEOGRAPHY_CODE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values, model_subtype)
-  attr = models.solve("attraction", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.D_GEOGRAPHY_CODE.values, od_2011.DISTANCE.values)
-  doubly = models.solve("doubly", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.O_GEOGRAPHY_CODE.values, od_2011.D_GEOGRAPHY_CODE.values, od_2011.DISTANCE.values)
+  attr = models.Model("attraction", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.D_GEOGRAPHY_CODE.values, od_2011.DISTANCE.values)
+  doubly = models.Model("doubly", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.O_GEOGRAPHY_CODE.values, od_2011.D_GEOGRAPHY_CODE.values, od_2011.DISTANCE.values)
 
   # visualise
   if do_graphs:
@@ -138,14 +132,14 @@ def main(params):
     ax1.xaxis.set_visible(False)
     ax1.yaxis.set_visible(False)
 
-    ax2.set_title("Unconstrained fit: R^2=%.2f" % gravity.pseudoR2)
-    ax2.plot(od_2011.MIGRATIONS, gravity.yhat, "b.")
+    ax2.set_title("Unconstrained fit: R^2=%.2f" % gravity.impl.pseudoR2)
+    ax2.plot(od_2011.MIGRATIONS, gravity.impl.yhat, "b.")
 
-    ax3.set_title("Attraction constrained fit: R^2=%.2f" % attr.pseudoR2)
-    ax3.plot(od_2011.MIGRATIONS, attr.yhat, "k.")
+    ax3.set_title("Attraction constrained fit: R^2=%.2f" % attr.impl.pseudoR2)
+    ax3.plot(od_2011.MIGRATIONS, attr.impl.yhat, "k.")
 
-    ax4.set_title("Doubly constrained fit: R^2=%.2f" % doubly.pseudoR2)
-    ax4.plot(od_2011.MIGRATIONS, doubly.yhat, "r.")
+    ax4.set_title("Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
+    ax4.plot(od_2011.MIGRATIONS, doubly.impl.yhat, "r.")
 
     #ax3.set_title("Migration vs origin population")
     #ax3.plot(od_2011.PEOPLE, od_2011.MIGRATIONS, "k.")
@@ -156,7 +150,7 @@ def main(params):
     plt.show()
     #fig.savefig("doc/img/sim_basic.png", transparent=True)
 
-  ybar = models.recalc("gravity", params["model_subtype"], gravity, od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values)
+  ybar = gravity(od_2011.PEOPLE.values, od_2011.HOUSEHOLDS.values)
 
 if __name__ == "__main__":
   

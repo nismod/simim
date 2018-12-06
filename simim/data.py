@@ -31,11 +31,10 @@ def get_people(year, geogs, cache_dir):
   # TODO variants...
   if year <= MYEData.MYEData.MAX_YEAR:
     datasource = MYEData.MYEData(cache_dir)
-    data = datasource.aggregate(year, geogs, ["GENDER", "C_AGE"])
   else:
     # TODO workaround for multiple countries... where is Wales and Scotland?
     datasource = SNPPData.SNPPData(cache_dir)
-    data = datasource.aggregate(["GENDER", "C_AGE"], geogs, year)
+  data = datasource.aggregate(["GENDER", "C_AGE"], geogs, year)
 
   # TODO: extrapolated SNPP
   #  raise NotImplementedError("TODO auto-extrapolate SNPP...")
