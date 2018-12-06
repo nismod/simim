@@ -12,6 +12,7 @@ from pysal.contrib.spint.gravity import Attraction
 from pysal.contrib.spint.gravity import Doubly
 
 from simim.utils import r2, rmse
+import simim.models as models
 
 # test methods only run if prefixed with "test"
 class Test(TestCase):
@@ -59,8 +60,8 @@ class Test(TestCase):
       self.assertTrue(rmse(est_unc, gravity.yhat) < 1e-13)
 
   def test_gravity_recalc(self):
-    for model in ["pow", "exp"]:
-      gravity = models.solve("gravity", model_subtype, Test.dataset.MIGRATIONS.values, Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values, Test.dataset.DISTANCE.values, model)
+    for model_subtype in ["pow", "exp"]:
+      gravity = models.solve("gravity", model_subtype, Test.dataset.MIGRATIONS.values, Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values, Test.dataset.DISTANCE.values)
       # k = gravity.params[0]
       # mu = gravity.params[1]
       # alpha = gravity.params[2]
@@ -72,9 +73,9 @@ class Test(TestCase):
       #   est_unc = (np.exp(k) * Test.dataset.PEOPLE ** mu * Test.dataset.HOUSEHOLDS ** alpha * np.exp(Test.dataset.DISTANCE * beta)).values
       
       # no perturbations should yield yhat
-      ybar = models.recalc("gravity", model_subtype, gravity, Test.dataset.MIGRATIONS.values, Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values, Test.dataset.DISTANCE.values, model)
+      ybar = models.recalc("gravity", model_subtype, gravity, Test.dataset.MIGRATIONS.values, Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values, Test.dataset.DISTANCE.values)
 
-      self.assertTrue(rmse(est_unc, gravity.yhat) < 1e-13)
+      self.assertTrue(rmse(ybar, gravity.yhat) < 1e-13)
 
 if __name__ == "__main__":
   unittest.main()
