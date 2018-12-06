@@ -56,7 +56,24 @@ class Test(TestCase):
       else:
         est_unc = (np.exp(k) * Test.dataset.PEOPLE ** mu * Test.dataset.HOUSEHOLDS ** alpha * np.exp(Test.dataset.DISTANCE * beta)).values
 
-      print()
+      self.assertTrue(rmse(est_unc, gravity.yhat) < 1e-13)
+
+  def test_gravity_recalc(self):
+    for model in ["pow", "exp"]:
+      gravity = models.solve("gravity", model_subtype, Test.dataset.MIGRATIONS.values, Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values, Test.dataset.DISTANCE.values, model)
+      # k = gravity.params[0]
+      # mu = gravity.params[1]
+      # alpha = gravity.params[2]
+      # beta = gravity.params[3]
+
+      # if model == "pow":
+      #   est_unc = (np.exp(k) * Test.dataset.PEOPLE ** mu * Test.dataset.HOUSEHOLDS ** alpha * Test.dataset.DISTANCE ** beta).values
+      # else:
+      #   est_unc = (np.exp(k) * Test.dataset.PEOPLE ** mu * Test.dataset.HOUSEHOLDS ** alpha * np.exp(Test.dataset.DISTANCE * beta)).values
+      
+      # no perturbations should yield yhat
+      ybar = models.recalc("gravity", model_subtype, gravity, Test.dataset.MIGRATIONS.values, Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values, Test.dataset.DISTANCE.values, model)
+
       self.assertTrue(rmse(est_unc, gravity.yhat) < 1e-13)
 
 if __name__ == "__main__":

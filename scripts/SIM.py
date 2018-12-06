@@ -156,6 +156,8 @@ def main(params):
     plt.show()
     #fig.savefig("doc/img/sim_basic.png", transparent=True)
 
+  ybar = models.recalc("gravity", params["model_subtype"], gravity, od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values)
+
 if __name__ == "__main__":
   
   main(get_config())
