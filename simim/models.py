@@ -85,5 +85,7 @@ def recalc(model_type, model_subtype, model, y, xo, xd, c):
     else:
       ybar = (np.exp(k) * xo ** mu * xd ** alpha * np.exp(c * beta))
 
+    return ybar
+
   else:
     raise NotImplementedError("TODO...")
