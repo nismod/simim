@@ -36,16 +36,7 @@ def get_people(year, geogs, cache_dir):
     # TODO workaround for multiple countries... where is Wales and Scotland?
     datasource = SNPPData.SNPPData(cache_dir)
     data = datasource.aggregate(["GENDER", "C_AGE"], geogs, year)
-    wales = [g for g in geogs if g.startswith("W")]
-    if wales:
-      data = data.append(datasource.aggregate(["GENDER", "C_AGE"], wales, year), ignore_index=True)
-    scotland = [g for g in geogs if g.startswith("S")]
-    if scotland: 
-      data = data.append(datasource.aggregate(["GENDER", "C_AGE"], scotland, year), ignore_index=True)
-    nireland = [g for g in geogs if g.startswith("N")]
-    if len(nireland): 
-      # doesnt support old 95.. codes
-      data = data.append(datasource.aggregate(["GENDER", "C_AGE"], nireland, year), ignore_index=True)
+
   # TODO: extrapolated SNPP
   #  raise NotImplementedError("TODO auto-extrapolate SNPP...")
 

@@ -6,6 +6,7 @@ import geopandas
 import matplotlib.pyplot as plt
 import contextily as ctx
 import simim.data as data
+import simim.models as models
 
 # import statsmodels.api as sm
 # #import statsmodels.formula.api as smf
@@ -113,74 +114,16 @@ def main(params):
   # print(od_2011[od_2011.DISTANCE.isnull()])
   # stop
 
-  # pysal impl
-  model = "pow"
-  print("model: " + model)
-  gravity = Gravity(od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values, model)
-  #print(gravity.params)
-  # TODO this formula is wrong?
-  k = gravity.params[0]
-  mu = gravity.params[1]
-  alpha = gravity.params[2]
-  beta = gravity.params[3]
-  if model == "pow":
-    est_unc = (np.exp(k) * od_2011.PEOPLE ** mu * od_2011.HOUSEHOLDS ** alpha * od_2011.DISTANCE ** beta).values
-  else:
-    est_unc = (np.exp(k) * od_2011.PEOPLE ** mu * od_2011.HOUSEHOLDS ** alpha * np.exp(od_2011.DISTANCE * beta)).values
+  print("model: %s-IGNORED (%s)" % (params["model_type"], params["model_subtype"]))
+
+  gravity = models.solve("gravity", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values)
 
   print("Unconstrained Poisson Fitted R2 = %f" % gravity.pseudoR2)
   print("Unconstrained Poisson Fitted RMSE = %f" % gravity.SRMSE)
-  print(np.mean(est_unc - gravity.yhat))
-  print(np.sqrt(np.mean((est_unc - gravity.yhat)**2)))
 
-  #od_2011.to_csv("tests/data/test2011.csv.gz", index=False, compression="gzip")
-
-  #perturb
-  od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] = od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 
-  pert_unc = ((np.exp(k) * od_2011.PEOPLE ** mu * od_2011.HOUSEHOLDS ** alpha * od_2011.DISTANCE ** beta).values + 0.5).astype(int)
-
-  # can only affect rows with the perturbed destination
-  print(np.count_nonzero(pert_unc - est_unc)/len(est_unc)) # =1/378
-
-  # # re-fit model
-  # gravity_bumped = Gravity(od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values, model)
-  # print(gravity.params)
-  # print(gravity_bumped.params)
-  # k = gravity_bumped.params[0]
-  # mu = gravity_bumped.params[1]
-  # alpha = gravity_bumped.params[2]
-  # beta = gravity_bumped.params[3]
-  # bump_unc = ((np.exp(k) * od_2011.PEOPLE ** mu * od_2011.HOUSEHOLDS ** alpha * od_2011.DISTANCE ** beta).values + 0.5).astype(int)
-  # print("Bumped Unconstrained Poisson Fitted R2 = %f" % gravity_bumped.pseudoR2)
-  # print("Bumped Unconstrained Poisson Fitted RMSE = %f" % gravity_bumped.SRMSE)
-
-  # print(np.count_nonzero(bump_unc - est_unc)/len(est_unc))
-
-  # Unconstrained Poisson Fitted R2 = 0.575711
-  # Unconstrained Poisson Fitted RMSE = 64.298780
-
-  # alpha = np.append(np.array(0.0), attr.params[2:-1])
-  # beta = attr.params[-1]
-  # #T_ij = exp(k + mu ln(V_i) + alpha_j + beta * ln?(D_ij))
-  # # est_attr = ((np.exp(k) * od_2011.PEOPLE ** mu * od_2011.HOUSEHOLDS ** alpha * od_2011.DISTANCE ** beta).values + 0.5).astype(int)
-  # print(len(alpha), len(od_2011.D_GEOGRAPHY_CODE.unique()))
-
-  # T0 = np.exp(k + mu * np.log(od_2011.PEOPLE.values[0]) + alpha[0] + np.log(od_2011.DISTANCE.values[0]) * beta)
-  # print(T0, attr.yhat[0])
-  # #print(attr.yhat)
-
-  # Attraction constrained model
-  model = "pow"
-  attr = Attraction(od_2011.MIGRATIONS.values, od_2011.D_GEOGRAPHY_CODE.values, od_2011.PEOPLE.values, od_2011.DISTANCE.values, model)
-  # k = attr.params[0]
-  # mu = attr.params[1]
-
-  print("Attr-constrained Poisson Fitted R2 = %f" % attr.pseudoR2)
-  print("Attr-constrained Poisson Fitted RMSE = %f" % attr.SRMSE)
-
-  doubly = Doubly(od_2011.MIGRATIONS.values, od_2011.O_GEOGRAPHY_CODE.values, od_2011.D_GEOGRAPHY_CODE.values, od_2011.DISTANCE.values, 'exp')
-  print("Doubly-constrained Poisson Fitted R2 = %f" % doubly.pseudoR2)
-  print("Doubly-constrained Poisson Fitted RMSE = %f" % doubly.SRMSE)
+  # model = Production(od_2011.MIGRATIONS.values, od_2011.O_GEOGRAPHY_CODE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values, model_subtype)
+  attr = models.solve("attraction", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.D_GEOGRAPHY_CODE.values, od_2011.DISTANCE.values)
+  doubly = models.solve("doubly", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.O_GEOGRAPHY_CODE.values, od_2011.D_GEOGRAPHY_CODE.values, od_2011.DISTANCE.values)
 
   # visualise
   if do_graphs:
