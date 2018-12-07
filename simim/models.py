@@ -15,44 +15,6 @@ def validate(model_type, model_subtype):
   if not model_subtype in _valid_subtypes:
     raise ValueError("invalid model subtype % (must be one of %s)" % (model_subtype, str(_valid_subtypes)))
 
-# def solve(model_type, model_subtype, y, xo, xd, c):
-
-#   # xo are categorical for prod/doubly constrained models
-#   # xd are categorical for attr/doubly constrained models
-
-#   validate(model_type, model_subtype)
-
-#   if model_type == "gravity":
-#     model = Gravity(y, xo, xd, c, model_subtype)
-#     # k = gravity.params[0]
-#     # mu = gravity.params[1]
-#     # alpha = gravity.params[2]
-#     # beta = gravity.params[3]
-
-#   elif model_type == "production":
-#     model = Production(y, xo, xd, c, model_subtype)
-
-#   elif model_type == "attraction":
-#     # Attraction constrained model
-#     model = Attraction(y, xd, xo, c, model_subtype)
-#     # k = attr.params[0]
-#     # mu = attr.params[1]
-
-#     # alpha = np.append(np.array(0.0), attr.params[2:-1])
-#     # beta = attr.params[-1]
-#     # #T_ij = exp(k + mu ln(V_i) + alpha_j + beta * ln?(D_ij))
-#     # # est_attr = ((np.exp(k) * od_2011.PEOPLE ** mu * od_2011.HOUSEHOLDS ** alpha * od_2011.DISTANCE ** beta).values + 0.5).astype(int)
-#     # print(len(alpha), len(od_2011.D_GEOGRAPHY_CODE.unique()))
-
-#     # T0 = np.exp(k + mu * np.log(od_2011.PEOPLE.values[0]) + alpha[0] + np.log(od_2011.DISTANCE.values[0]) * beta)
-#     # print(T0, attr.yhat[0])
-#     # #print(attr.yhat)
-
-#   else: #model_type == "doubly":
-#     model = Doubly(y, xo, xd, c, model_subtype)
-
-#   return model
-
   # TODO perturb
   #  od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] = od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 
   #  pert_unc = ((np.exp(k) * od_2011.PEOPLE ** mu * od_2011.HOUSEHOLDS ** alpha * od_2011.DISTANCE ** beta).values + 0.5).astype(int)
@@ -70,46 +32,44 @@ def validate(model_type, model_subtype):
   # print("Bumped Unconstrained Poisson Fitted R2 = %f" % gravity_bumped.pseudoR2)
   # print("Bumped Unconstrained Poisson Fitted RMSE = %f" % gravity_bumped.SRMSE)
 
-# def recalc(model_type, model_subtype, model, y, xo, xd, c):
-
-#   validate(model_type, model_subtype)
-
-#   if model_type == "gravity":
-#     k = model.params[0]
-#     mu = model.params[1]
-#     alpha = model.params[2]
-#     beta = model.params[3]
-
-#     if model_subtype == "pow":
-#       ybar = (np.exp(k) * xo ** mu * xd ** alpha * c ** beta)
-#     else:
-#       ybar = (np.exp(k) * xo ** mu * xd ** alpha * np.exp(c * beta))
-
-#     return ybar
-
-#   else:
-#     raise NotImplementedError("TODO...")
 
 class Model:
-  def __init__(self, model_type, model_subtype, y, xo, xd, c):
+  def __init__(self, model_type, model_subtype, dataset, y_col, xo_cols, xd_cols, cost_col):
     self.model_type = model_type
     self.model_subtype = model_subtype
-
     validate(self.model_type, self.model_subtype)
 
-    self.y = y
-    self.xo = xo
-    self.xd = xd
-    self.c = c
+    # take a copy of the input dataset
+    self.dataset = dataset.copy()
+
+    self.y_col = y_col
+    self.xo_cols = xo_cols
+    self.xd_cols = xd_cols
+    self.cost_col = cost_col
 
     if self.model_type == "gravity":
-      self.impl = Gravity(self.y, self.xo, self.xd, self.c, self.model_subtype)
+      self.impl = Gravity(self.dataset[self.y_col].values, 
+                          self.dataset[self.xo_cols].values, 
+                          self.dataset[self.xd_cols].values, 
+                          self.dataset[self.cost_col].values, self.model_subtype)
     elif self.model_type == "production":
-      self.impl = Production(self.y, self.xo, self.xd, self.c, self.model_subtype)
+      self.impl = Production(self.dataset[self.y_col].values, 
+                             self.dataset[self.xo_cols].values, 
+                             self.dataset[self.xd_cols].values, 
+                             self.dataset[self.cost_col].values, self.model_subtype)
     elif self.model_type == "attraction":
-      self.impl = Attraction(self.y, self.xd, self.xo, self.c, self.model_subtype)
+      self.impl = Attraction(self.dataset[self.y_col].values, 
+                             self.dataset[self.xd_cols].values, 
+                             self.dataset[self.xo_cols].values, 
+                             self.dataset[self.cost_col].values, self.model_subtype)
     else: #model_type == "doubly":
-      self.impl = Doubly(self.y, self.xo, self.xd, self.c, self.model_subtype)
+      self.impl = Doubly(self.dataset[self.y_col].values, 
+                         self.dataset[self.xo_cols].values, 
+                         self.dataset[self.xd_cols].values, 
+                         self.dataset[self.cost_col].values, self.model_subtype)
+
+    # append the model-fitted flows to the dataframe, prefixed with "MODEL_"
+    self.dataset["MODEL_"+self.y_col] = self.impl.yhat
 
   # TODO generalise...
   def k(self):
@@ -127,9 +87,9 @@ class Model:
   def __call__(self, xo, xd):
     if self.model_type == "gravity":
       if self.model_subtype == "pow":
-        ybar = (np.exp(self.k()) * xo ** self.mu() * xd ** self.alpha() * self.c ** self.beta())
+        ybar = (np.exp(self.k()) * xo ** self.mu() * xd ** self.alpha() * self.dataset[self.cost_col] ** self.beta())
       else:
-        ybar = (np.exp(self.k()) * xo ** self.mu() * xd ** self.alpha() * np.exp(self.c * self.beta()))
+        ybar = (np.exp(self.k()) * xo ** self.mu() * xd ** self.alpha() * np.exp(self.dataset[self.cost_col] * self.beta()))
       return ybar
     else:
       raise NotImplementedError("TODO...")

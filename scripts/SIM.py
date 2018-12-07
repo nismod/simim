@@ -20,7 +20,7 @@ import ukcensusapi.Nomisweb as Nomisweb
 import ukcensusapi.NRScotland as NRScotland
 import ukcensusapi.NISRA as NISRA
 
-from simim.utils import get_shapefile, calc_distances, get_config
+from simim.utils import get_shapefile, calc_distances, od_matrix, get_config
 
 import ukpopulation.utils as ukpoputils
 
@@ -89,7 +89,7 @@ def main(params):
   od_2011 = od_2011.merge(hh_2011, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
   print(od_2011.head())
 
-  odmatrix = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].set_index(["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]).unstack().values
+  odmatrix = od_matrix(od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
   #print(odmatrix.shape)
 
   # remove O=D rows
@@ -105,48 +105,48 @@ def main(params):
     od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isin(ni)) & (~od_2011.D_GEOGRAPHY_CODE.isin(ni))]
     odmatrix = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].set_index(["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]).unstack().values
 
-  #od_2011.to_csv("od2011.csv", index=False)
-  # print(od_2011[od_2011.DISTANCE.isnull()])
-  # stop
-
   print("model: %s[IGNORED] (%s)" % (params["model_type"], params["model_subtype"]))
 
-# TODO model class takes entire DF (+O/D column(s)) and adds its yhat as a column
-#  od_model = 
-
-  gravity = models.Model("gravity", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values)
+  gravity = models.Model("gravity", params["model_subtype"], od_2011, "MIGRATIONS", "PEOPLE", "HOUSEHOLDS", "DISTANCE")
 
   print("Unconstrained Poisson Fitted R2 = %f" % gravity.impl.pseudoR2)
   print("Unconstrained Poisson Fitted RMSE = %f" % gravity.impl.SRMSE)
 
+  model_odmatrix = od_matrix(gravity.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
+
   # model = Production(od_2011.MIGRATIONS.values, od_2011.O_GEOGRAPHY_CODE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values, model_subtype)
-  attr = models.Model("attraction", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.PEOPLE.values, od_2011.D_GEOGRAPHY_CODE.values, od_2011.DISTANCE.values)
-  doubly = models.Model("doubly", params["model_subtype"], od_2011.MIGRATIONS.values, od_2011.O_GEOGRAPHY_CODE.values, od_2011.D_GEOGRAPHY_CODE.values, od_2011.DISTANCE.values)
+  attr = models.Model("attraction", params["model_subtype"], od_2011, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
+  doubly = models.Model("doubly", params["model_subtype"], od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "DISTANCE")
 
   # visualise
   if do_graphs:
-    #fig, [[ax1, ax01], [ax10, ax11]] = plt.subplots(nrows=2, ncols=2, figsize=(10, 10), sharex=False, sharey=False)
-    #fig, [ax1, ax01] = plt.subplots(nrows=1, ncols=2, figsize=(16, 10), sharex=False, sharey=False)
+    #fig, [[ax1, ax10], [ax10, ax11]] = plt.subplots(nrows=2, ncols=2, figsize=(10, 10), sharex=False, sharey=False)
+    #fig, [ax1, ax10] = plt.subplots(nrows=1, ncols=2, figsize=(16, 10), sharex=False, sharey=False)
     v = visuals.Visual(2,3)
     ax00 = v.axes[0,0]
     model_od = v.axes[0,1] 
-    ax01 = v.axes[1,0]
-    ax10 = v.axes[1,1]
-    ax11 = v.axes[1,2]
+    ax10 = v.axes[1,0]
+    ax11 = v.axes[1,1]
+    ax12 = v.axes[1,2]
     #fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
-    ax00.set_title("OD matrix (displaced log scale)")
+    ax00.set_title("Actual OD matrix (displaced log scale)")
     ax00.imshow(np.log(odmatrix+1), cmap=plt.get_cmap('Greens'))
     ax00.xaxis.set_visible(False)
     ax00.yaxis.set_visible(False)
 
-    ax01.set_title("Unconstrained fit: R^2=%.2f" % gravity.impl.pseudoR2)
-    ax01.plot(od_2011.MIGRATIONS, gravity.impl.yhat, "b.")
+    model_od.set_title("Gravity model OD matrix (displaced log scale)")
+    model_od.imshow(np.log(model_odmatrix+1), cmap=plt.get_cmap('Greens'))
+    model_od.xaxis.set_visible(False)
+    model_od.yaxis.set_visible(False)
 
-    ax10.set_title("Attraction constrained fit: R^2=%.2f" % attr.impl.pseudoR2)
-    ax10.plot(od_2011.MIGRATIONS, attr.impl.yhat, "k.")
+    ax10.set_title("Unconstrained fit: R^2=%.2f" % gravity.impl.pseudoR2)
+    ax10.plot(od_2011.MIGRATIONS, gravity.impl.yhat, "b.")
 
-    ax11.set_title("Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
-    ax11.plot(od_2011.MIGRATIONS, doubly.impl.yhat, "r.")
+    ax11.set_title("Attraction constrained fit: R^2=%.2f" % attr.impl.pseudoR2)
+    ax11.plot(od_2011.MIGRATIONS, attr.impl.yhat, "k.")
+
+    ax12.set_title("Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
+    ax12.plot(od_2011.MIGRATIONS, doubly.impl.yhat, "r.")
 
     #ax10.set_title("Migration vs origin population")
     #ax10.plot(od_2011.PEOPLE, od_2011.MIGRATIONS, "k.")

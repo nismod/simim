@@ -46,10 +46,7 @@ class Test(TestCase):
 
   def test_gravity(self):
     for model_subtype in ["pow", "exp"]:
-      gravity = models.Model("gravity", model_subtype, Test.dataset.MIGRATIONS.values, 
-                                                       Test.dataset.PEOPLE.values, 
-                                                       Test.dataset.HOUSEHOLDS.values, 
-                                                       Test.dataset.DISTANCE.values)
+      gravity = models.Model("gravity", model_subtype, Test.dataset, "MIGRATIONS", "PEOPLE", "HOUSEHOLDS", "DISTANCE")
       self.assertTrue(rmse(gravity(Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values), gravity.impl.yhat) < 1e-13)
       Test.dataset["HH_CHANGED"] = Test.dataset.HOUSEHOLDS
       Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HH_CHANGED"] = Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 

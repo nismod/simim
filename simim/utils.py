@@ -58,12 +58,14 @@ def calc_distances(gdf):
   dists.DISTANCE = dists.DISTANCE / 1000.0
   return dists
 
-
 def r2(fitted, actual):
   return pearsonr(fitted, actual)[0] ** 2
 
 def rmse(fitted, actual):
   return np.sqrt(np.mean((fitted - actual) ** 2))
+
+def od_matrix(dataset, value_col, o_col, d_col):
+  return dataset[[value_col, o_col, d_col]].set_index([o_col, d_col]).unstack().values
 
 def get_config():
   parser = argparse.ArgumentParser(description="spatial interaction model of internal migration")
