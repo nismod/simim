@@ -6,12 +6,15 @@ import matplotlib.pyplot as plt
 # https://matplotlib.org/examples/color/colormaps_reference.html
 
 class Visual:
-  def __init__(self, rows, cols):
+  def __init__(self, rows, cols, panel_x=5, panel_y=5):
     self.rows = rows
     self.cols = cols
-    self.fig, self.axes = plt.subplots(nrows=rows, ncols=cols, figsize=(cols*5, rows*5), sharex=False, sharey=False)
+    self.fig, self.axes = plt.subplots(nrows=rows, ncols=cols, figsize=(cols*panel_x, rows*panel_y), sharex=False, sharey=False)
 
   def panel(self, index):
+    # deal with non-array case
+    if self.rows == 1 and self.cols == 1:
+      return self.axes
     return self.axes[index]
 
   def scatter(self, panel, x, y, marker="k.", title=None, **kwargs):
@@ -28,13 +31,16 @@ class Visual:
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
 
-  def polygons(self, panel, gdf, xlim, ylim, edge_colour, fill_colour):
-    ax = self.axes[panel]
+  def polygons(self, panel, gdf, xlim, ylim, fill_colour):
+    #ax = self.axes[panel]
+    ax = self.panel(panel)
     ax.axis("off")
-    ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
+    if xlim:
+      ax.set_xlim(xlim)
+    if ylim:
+      ax.set_ylim(ylim)
 
-    plot_polygon_collection(ax, gdf['geometry'], edgecolor="white", facecolor=fill_colour, linewidth=0)
+    plot_polygon_collection(ax, gdf['geometry'], facecolor=fill_colour, linewidth=0)
     #gdf.plot(alpha=0.5, edgecolor='k', color=gdf.fill_colour, ax=ax)
 
   def show(self):

@@ -19,15 +19,17 @@ import geopandas
 import matplotlib.pyplot as plt
 import contextily as ctx
 from simim.utils import get_shapefile, get_config
-
+import simim.visuals as visuals
 #from scipy.spatial.distance import squareform, pdist
 
 def main(params):
 
   scale = "gb"
 
-  figsize=(9, 9) if scale != "gb" else (6,9)
-  fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, sharex=False, sharey=False)
+  v = visuals.Visual(1,1, panel_y=9 if scale=="gb" else 5)
+
+  # figsize=(9, 9) if scale != "gb" else (6,9)
+  # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, sharex=False, sharey=False)
 
   ctrlads = ["E07000178", "E06000042", "E07000008"]
   arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
@@ -36,30 +38,34 @@ def main(params):
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
   gdf = get_shapefile(url, params["cache_dir"])
 
-  print(gdf.columns.values)
-  print(gdf[gdf.lad16cd.isin(arclads)][["lad16nm", "lad16cd", "bng_e", "bng_n"]])
-  ax.axis("off")
-  fig.patch.set_visible(False)
-  ax.patch.set_visible(False)
   # england
   if scale == "e":
-    ax.set_xlim([120000, 670000])
-    ax.set_ylim([ 00000, 550000])
+    xlim = [120000, 670000]
+    ylim = [ 00000, 550000]
   # closeup
   elif scale == "closeup":
-    ax.set_xlim([380000, 600000])
-    ax.set_ylim([130000, 350000])
+    xlim =[380000, 600000]
+    ylim = [130000, 350000]
+  else:
+    # fit all the polygons
+    xlim=None
+    ylim=None
+
+  v.polygons((0), gdf, xlim, ylim, fill_colour="grey")
+  v.polygons((0), gdf[gdf.lad16cd.isin(arclads)], xlim, ylim, fill_colour="orange")
+  v.polygons((0), gdf[gdf.lad16cd.isin(ctrlads)], xlim, ylim, fill_colour="red")
   # LAD centroids
   #ax.plot(gdf.bng_e, gdf.bng_n, "go")
   #for item in [fig, ax]:
   #  item.patch.set_visible(False)
 
-  gdf[~gdf.lad16cd.isin(arclads)].plot(alpha=0.5, edgecolor='k', color='w', ax=ax)
-  gdf[gdf.lad16cd.isin(arclads)].plot(alpha=0.5, edgecolor='k', color='orange', ax=ax)
-  gdf[gdf.lad16cd.isin(ctrlads)].plot(alpha=0.5, edgecolor='k', color='r', ax=ax)
-  plt.tight_layout()
-  plt.show()
-  #fig.savefig(os.path.join("doc/img", scale + ".png"))
+  # gdf[~gdf.lad16cd.isin(arclads)].plot(alpha=0.5, edgecolor='k', color='w', ax=ax)
+  # gdf[gdf.lad16cd.isin(arclads)].plot(alpha=0.5, edgecolor='k', color='orange', ax=ax)
+  # gdf[gdf.lad16cd.isin(ctrlads)].plot(alpha=0.5, edgecolor='k', color='r', ax=ax)
+  # plt.tight_layout()
+  # plt.show()
+  v.show()
+  v.to_png(os.path.join("doc/img", scale + ".png"))
 
 if __name__ == "__main__":
   main(get_config())
