@@ -26,7 +26,7 @@ def main(params):
 
   scale = "gb"
 
-  v = visuals.Visual(1,1, panel_y=9 if scale=="gb" else 5)
+  v = visuals.Visual(1,1, panel_y=8 if scale=="gb" else 5)
 
   # figsize=(9, 9) if scale != "gb" else (6,9)
   # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize, sharex=False, sharey=False)
@@ -51,19 +51,10 @@ def main(params):
     xlim=None
     ylim=None
 
-  v.polygons((0), gdf, xlim, ylim, fill_colour="grey")
-  v.polygons((0), gdf[gdf.lad16cd.isin(arclads)], xlim, ylim, fill_colour="orange")
-  v.polygons((0), gdf[gdf.lad16cd.isin(ctrlads)], xlim, ylim, fill_colour="red")
-  # LAD centroids
-  #ax.plot(gdf.bng_e, gdf.bng_n, "go")
-  #for item in [fig, ax]:
-  #  item.patch.set_visible(False)
+  v.polygons((0), gdf, xlim, ylim)
+  v.polygons((0), gdf[gdf.lad16cd.isin(arclads)], xlim, ylim, edge_colour="darkgrey", fill_colour="orange")
+  v.polygons((0), gdf[gdf.lad16cd.isin(ctrlads)], xlim, ylim, edge_colour="darkgrey", fill_colour="red")
 
-  # gdf[~gdf.lad16cd.isin(arclads)].plot(alpha=0.5, edgecolor='k', color='w', ax=ax)
-  # gdf[gdf.lad16cd.isin(arclads)].plot(alpha=0.5, edgecolor='k', color='orange', ax=ax)
-  # gdf[gdf.lad16cd.isin(ctrlads)].plot(alpha=0.5, edgecolor='k', color='r', ax=ax)
-  # plt.tight_layout()
-  # plt.show()
   v.show()
   v.to_png(os.path.join("doc/img", scale + ".png"))
 

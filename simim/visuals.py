@@ -18,20 +18,20 @@ class Visual:
     return self.axes[index]
 
   def scatter(self, panel, x, y, marker="k.", title=None, **kwargs):
-    ax = self.axes[panel]
+    ax = self.panel(panel)
     if title:
       ax.set_title(title)
     ax.plot(x, y, marker, **kwargs)
 
   def matrix(self, panel, matrix, cmap="Greys", title=None, **kwargs):
-    ax = self.axes[panel]
+    ax = self.panel(panel)
     if title:
       ax.set_title(title)
     ax.imshow(matrix, cmap=cmap, **kwargs)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
 
-  def polygons(self, panel, gdf, xlim, ylim, fill_colour):
+  def polygons(self, panel, gdf, xlim, ylim, fill_colour="darkgrey", edge_colour="lightgrey"):
     #ax = self.axes[panel]
     ax = self.panel(panel)
     ax.axis("off")
@@ -40,8 +40,7 @@ class Visual:
     if ylim:
       ax.set_ylim(ylim)
 
-    plot_polygon_collection(ax, gdf['geometry'], facecolor=fill_colour, linewidth=0)
-    #gdf.plot(alpha=0.5, edgecolor='k', color=gdf.fill_colour, ax=ax)
+    plot_polygon_collection(ax, gdf['geometry'], edgecolor=edge_colour, facecolor=fill_colour, linewidth=0.25)
 
   def show(self):
     plt.tight_layout()
