@@ -89,11 +89,8 @@ def main(params):
   od_2011 = od_2011.merge(hh_2011, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
   print(od_2011.head())
 
-  odmatrix = od_matrix(od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
   #print(odmatrix.shape)
 
-  # remove O=D rows
-  od_2011 = od_2011[od_2011.O_GEOGRAPHY_CODE != od_2011.D_GEOGRAPHY_CODE]
 
   # set epsilon dist for O=D rows
   #od_2011.loc[od_2011.O_GEOGRAPHY_CODE == od_2011.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
@@ -104,6 +101,10 @@ def main(params):
           '95EE', '95PP', '95UU', '95WW', '95KK', '95JJ']
     od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isin(ni)) & (~od_2011.D_GEOGRAPHY_CODE.isin(ni))]
     odmatrix = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].set_index(["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]).unstack().values
+  # remove O=D rows and reset index
+  od_2011 = od_2011[od_2011.O_GEOGRAPHY_CODE != od_2011.D_GEOGRAPHY_CODE].reset_index(drop=True)
+
+  odmatrix = od_matrix(od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
   print("model: %s[IGNORED] (%s)" % (params["model_type"], params["model_subtype"]))
 
@@ -114,49 +115,73 @@ def main(params):
 
   model_odmatrix = od_matrix(gravity.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
-  # model = Production(od_2011.MIGRATIONS.values, od_2011.O_GEOGRAPHY_CODE.values, od_2011.HOUSEHOLDS.values, od_2011.DISTANCE.values, model_subtype)
+  ctrlads = ["E07000178", "E06000042", "E07000008"]
+  arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
+  camkox = ctrlads
+  camkox.extend(arclads)
+
+  od_2011["CHANGED_HOUSEHOLDS"] = od_2011.HOUSEHOLDS
+  #od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] = od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] + 300000 
+  #od_2011.loc[od_2011.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] = od_2011.loc[od_2011.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] + 10000 
+  od_2011.loc[od_2011.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] = od_2011.loc[od_2011.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] + 20000 
+  #print(od_2011[od_2011.MIGRATIONS != od_2011.CHANGED_HOUSEHOLDS])
+
+  od_2011["CHANGED_MIGRATIONS"] = gravity(od_2011.PEOPLE.values, od_2011.CHANGED_HOUSEHOLDS.values)
+#  print(gravity.dataset[od_2011.MIGRATIONS != od_2011.CHANGED_MIGRATIONS])
+
+  changed_odmatrix = od_matrix(od_2011, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
+  #print(odmatrix)
+
+  delta_od = changed_odmatrix - model_odmatrix
+
   attr = models.Model("attraction", params["model_subtype"], od_2011, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
   doubly = models.Model("doubly", params["model_subtype"], od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "DISTANCE")
 
   # visualise
   if do_graphs:
-    #fig, [[ax1, ax10], [ax10, ax11]] = plt.subplots(nrows=2, ncols=2, figsize=(10, 10), sharex=False, sharey=False)
-    #fig, [ax1, ax10] = plt.subplots(nrows=1, ncols=2, figsize=(16, 10), sharex=False, sharey=False)
     v = visuals.Visual(2,3)
-    ax00 = v.axes[0,0]
-    model_od = v.axes[0,1] 
-    ax10 = v.axes[1,0]
-    ax11 = v.axes[1,1]
-    ax12 = v.axes[1,2]
+    actual_od = v.axes[1,0]
+    model_od = v.axes[1,1] 
+    changed_od = v.axes[1,2]
+    gravity_scatter = v.axes[0,0]
+    attr_scatter = v.axes[0,1]
+    doubly_scatter = v.axes[0,2]
     #fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
-    ax00.set_title("Actual OD matrix (displaced log scale)")
-    ax00.imshow(np.log(odmatrix+1), cmap=plt.get_cmap('Greens'))
-    ax00.xaxis.set_visible(False)
-    ax00.yaxis.set_visible(False)
+    actual_od.set_title("Actual OD matrix (displaced log scale)")
+    actual_od.imshow(np.log(odmatrix+1), cmap=plt.get_cmap('Greens'))
+    actual_od.xaxis.set_visible(False)
+    actual_od.yaxis.set_visible(False)
 
     model_od.set_title("Gravity model OD matrix (displaced log scale)")
     model_od.imshow(np.log(model_odmatrix+1), cmap=plt.get_cmap('Greens'))
     model_od.xaxis.set_visible(False)
     model_od.yaxis.set_visible(False)
 
-    ax10.set_title("Unconstrained fit: R^2=%.2f" % gravity.impl.pseudoR2)
-    ax10.plot(od_2011.MIGRATIONS, gravity.impl.yhat, "b.")
+    # https://matplotlib.org/examples/color/colormaps_reference.html
+    changed_od.set_title("Gravity model perturbed OD matrix delta")
+    # we get away with log here as all values are +ve
+    changed_od.imshow(np.log(1+delta_od), cmap=plt.get_cmap('Greens'))
+    absmax = max(np.max(delta_od),-np.min(delta_od))
+    #changed_od.imshow(delta_od, clim=(-absmax/10,absmax/10), cmap=plt.get_cmap('RdBu'))
+    changed_od.xaxis.set_visible(False)
+    changed_od.yaxis.set_visible(False)
 
-    ax11.set_title("Attraction constrained fit: R^2=%.2f" % attr.impl.pseudoR2)
-    ax11.plot(od_2011.MIGRATIONS, attr.impl.yhat, "k.")
+    gravity_scatter.set_title("Gravity (unconstrained) fit: R^2=%.2f" % gravity.impl.pseudoR2)
+    gravity_scatter.plot(od_2011.MIGRATIONS, gravity.impl.yhat, "b.")
 
-    ax12.set_title("Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
-    ax12.plot(od_2011.MIGRATIONS, doubly.impl.yhat, "r.")
+    attr_scatter.set_title("Attraction constrained fit: R^2=%.2f" % attr.impl.pseudoR2)
+    attr_scatter.plot(od_2011.MIGRATIONS, attr.impl.yhat, "k.")
 
-    #ax10.set_title("Migration vs origin population")
-    #ax10.plot(od_2011.PEOPLE, od_2011.MIGRATIONS, "k.")
+    doubly_scatter.set_title("Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
+    doubly_scatter.plot(od_2011.MIGRATIONS, doubly.impl.yhat, "r.")
 
-    # ax11.set_title("Migration vs destination households")
-    # ax11.plot(od_2011.HOUSEHOLDS, od_2011.MIGRATIONS, "r.")
+    #gravity_scatter.set_title("Migration vs origin population")
+    #gravity_scatter.plot(od_2011.PEOPLE, od_2011.MIGRATIONS, "k.")
+
+    # attr_scatter.set_title("Migration vs destination households")
+    # attr_scatter.plot(od_2011.HOUSEHOLDS, od_2011.MIGRATIONS, "r.")
     v.show()
-    #fig.savefig("doc/img/sim_basic.png", transparent=True)
-
-  ybar = gravity(od_2011.PEOPLE.values, od_2011.HOUSEHOLDS.values)
+    v.to_png("doc/img/sim_basic.png")#, transparent=True)
 
 if __name__ == "__main__":
   

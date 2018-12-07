@@ -65,7 +65,7 @@ def rmse(fitted, actual):
   return np.sqrt(np.mean((fitted - actual) ** 2))
 
 def od_matrix(dataset, value_col, o_col, d_col):
-  return dataset[[value_col, o_col, d_col]].set_index([o_col, d_col]).unstack().values
+  return np.nan_to_num(dataset[[value_col, o_col, d_col]].set_index([o_col, d_col]).unstack().values)
 
 def get_config():
   parser = argparse.ArgumentParser(description="spatial interaction model of internal migration")
