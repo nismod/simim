@@ -1,5 +1,6 @@
 """ visuals.py """
 
+from geopandas.plotting import plot_polygon_collection
 import matplotlib.pyplot as plt
 
 # https://matplotlib.org/examples/color/colormaps_reference.html
@@ -27,8 +28,14 @@ class Visual:
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
 
-  def map(self, panel):
-    pass
+  def polygons(self, panel, gdf, xlim, ylim, edge_colour, fill_colour):
+    ax = self.axes[panel]
+    ax.axis("off")
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+
+    plot_polygon_collection(ax, gdf['geometry'], edgecolor="white", facecolor=fill_colour, linewidth=0)
+    #gdf.plot(alpha=0.5, edgecolor='k', color=gdf.fill_colour, ax=ax)
 
   def show(self):
     plt.tight_layout()

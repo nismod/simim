@@ -119,7 +119,7 @@ def main(params):
 
   ctrlads = ["E07000178", "E06000042", "E07000008"]
   arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
-  camkox = ctrlads
+  camkox = ctrlads.copy()
   camkox.extend(arclads)
 
   od_2011["CHANGED_HOUSEHOLDS"] = od_2011.HOUSEHOLDS
@@ -147,6 +147,10 @@ def main(params):
     v.scatter((0,0), od_2011.MIGRATIONS, gravity.impl.yhat, "b.", "Gravity (unconstrained) fit: R^2=%.2f" % gravity.impl.pseudoR2)
     v.scatter((0,1), od_2011.MIGRATIONS, attr.impl.yhat, "k.", "Attraction constrained fit: R^2=%.2f" % attr.impl.pseudoR2)
     v.scatter((0,2), od_2011.MIGRATIONS, doubly.impl.yhat, "r.", "Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
+
+    # v.polygons((0,2), gdf, [120000, 670000], [0, 550000], "white", "lightgrey")
+    # v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], [120000, 670000], [0, 550000], "white", "orange")
+    # v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], [120000, 670000], [0, 550000], "white", "red")
 
     v.matrix((1,0), np.log(odmatrix+1), "Greens", title="Actual OD matrix (displaced log scale)")
     v.matrix((1,1), np.log(model_odmatrix+1), "Oranges", title="Gravity model OD matrix (displaced log scale)")
