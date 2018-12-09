@@ -77,20 +77,59 @@ class Model:
     return self.impl.params[0]
 
   def mu(self):
+    if self.model_type == "production":
+      return self.impl.params[1:-2]
+    elif self.model_type == "attraction":
+      return self.impl.params[-2]
     return self.impl.params[1]
 
   def alpha(self):
+    if self.model_type == "production":
+      return self.impl.params[-2]
+    elif self.model_type == "attraction":
+      return self.impl.params[1:-2]
     return self.impl.params[2]
 
   def beta(self):
-    return self.impl.params[3]
+    return self.impl.params[-1]
 
-  def __call__(self, xo, xd):
+  def __call__(self, xo=None, xd=None):
     if self.model_type == "gravity":
+      assert xo is not None
+      assert xd is not None
       if self.model_subtype == "pow":
         ybar = (np.exp(self.k()) * xo ** self.mu() * xd ** self.alpha() * self.dataset[self.cost_col] ** self.beta())
       else:
         ybar = (np.exp(self.k()) * xo ** self.mu() * xd ** self.alpha() * np.exp(self.dataset[self.cost_col] * self.beta()))
+      return ybar
+    elif self.model_type == "production":
+      assert xo is None
+      assert xd is not None
+      #mu = np.repeat(self.mu(), int(len(self.dataset)/len(self.mu())))
+      mu = np.append(0, self.mu())
+      mu = np.tile(mu, int(len(self.dataset)/len(mu)))
+      # NB ordering is not guaranteed
+      self.dataset["mu"] = np.exp(mu)
+      #mu = np.repeat(0, len(self.dataset))
+      assert len(mu) == len(self.dataset)
+      if self.model_subtype == "pow":
+        ybar = (np.exp(self.k()) * np.exp(mu) * xd ** self.alpha() * self.dataset[self.cost_col] ** self.beta())
+      else:
+        ybar = (np.exp(self.k()) * np.exp(mu) * xd ** self.alpha() * np.exp(self.dataset[self.cost_col] * self.beta()))
+      return ybar
+    elif self.model_type == "attraction":
+      assert xo is not None
+      assert xd is None
+      alpha = np.append(0,self.alpha())
+      alpha = np.repeat(alpha, int(len(self.dataset)/len(alpha)))
+      # NB ordering is not guaranteed
+      self.dataset["alpha"] =np.exp(alpha)
+      #alpha = np.tile(self.alpha(), int(len(self.dataset)/len(self.alpha())))
+      assert len(alpha) == len(self.dataset)
+      if self.model_subtype == "pow":
+        ybar = (np.exp(self.k()) * xo ** self.mu() * np.exp(alpha) * self.dataset[self.cost_col] ** self.beta())
+      else:
+        ybar = (np.exp(self.k()) * xo ** self.mu() * np.exp(alpha) * np.exp(self.dataset[self.cost_col] * self.beta()))
       return ybar
     else:
       raise NotImplementedError("TODO...")

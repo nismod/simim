@@ -24,6 +24,10 @@ from simim.utils import get_shapefile, calc_distances, od_matrix, get_config
 
 import ukpopulation.utils as ukpoputils
 
+ctrlads = ["E07000178", "E06000042", "E07000008"]
+arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
+
+
 def main(params):
 
   do_graphs = True
@@ -87,13 +91,13 @@ def main(params):
   od_2011 = od_2011.merge(p_2011, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
   # Merge households *at destination*
   od_2011 = od_2011.merge(hh_2011, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
-  print(od_2011.head())
 
   #print(odmatrix.shape)
 
 
   # set epsilon dist for O=D rows
-  #od_2011.loc[od_2011.O_GEOGRAPHY_CODE == od_2011.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
+  od_2011.loc[od_2011.O_GEOGRAPHY_CODE == od_2011.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
+  print(od_2011.head())
 
   if ukpoputils.NI not in coverage:
     ni = ['95TT', '95XX', '95OO', '95GG', '95DD', '95QQ', '95ZZ', '95VV', '95YY', '95CC',
@@ -101,24 +105,36 @@ def main(params):
           '95EE', '95PP', '95UU', '95WW', '95KK', '95JJ']
     od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isin(ni)) & (~od_2011.D_GEOGRAPHY_CODE.isin(ni))]
     odmatrix = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].set_index(["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]).unstack().values
+  
   # remove O=D rows and reset index
-  od_2011 = od_2011[od_2011.O_GEOGRAPHY_CODE != od_2011.D_GEOGRAPHY_CODE].reset_index(drop=True)
+  #od_2011 = od_2011[od_2011.O_GEOGRAPHY_CODE != od_2011.D_GEOGRAPHY_CODE].reset_index(drop=True)
+
+  # miniSIM
+  #od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE.isin(arclads)) & (od_2011.D_GEOGRAPHY_CODE.isin(arclads))]
 
   odmatrix = od_matrix(od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
   print("model: %s[IGNORED] (%s)" % (params["model_type"], params["model_subtype"]))
 
   gravity = models.Model("gravity", params["model_subtype"], od_2011, "MIGRATIONS", "PEOPLE", "HOUSEHOLDS", "DISTANCE")
-  attr = models.Model("attraction", params["model_subtype"], od_2011, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
-  doubly = models.Model("doubly", params["model_subtype"], od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "DISTANCE")
+  prod = models.Model("production", params["model_subtype"], od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
+  # TOO CONSTRAINED!
+  # attr = models.Model("attraction", params["model_subtype"], od_2011, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
+  # doubly = models.Model("doubly", params["model_subtype"], od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "DISTANCE")
+
+  # print(prod.impl.params)
+  # print(attr.impl.params)
+  # check = pd.DataFrame({"P_YHAT": prod.impl.yhat, "P_MANUAL": prod(xd=od_2011.HOUSEHOLDS.values), "P_MU": prod.dataset.mu,
+  #                       "A_YHAT": attr.impl.yhat, "A_MANUAL": attr(xo=od_2011.PEOPLE.values), "A_ALPHA": attr.dataset.alpha})
+  # check.to_csv("./check.csv", index=None)
+  # stop
+
 
   print("Unconstrained Poisson Fitted R2 = %f" % gravity.impl.pseudoR2)
   print("Unconstrained Poisson Fitted RMSE = %f" % gravity.impl.SRMSE)
 
   model_odmatrix = od_matrix(gravity.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
-  ctrlads = ["E07000178", "E06000042", "E07000008"]
-  arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
   camkox = ctrlads.copy()
   camkox.extend(arclads)
 
@@ -145,19 +161,20 @@ def main(params):
     v = visuals.Visual(2,3)
 
     v.scatter((0,0), od_2011.MIGRATIONS, gravity.impl.yhat, "b.", "Gravity (unconstrained) fit: R^2=%.2f" % gravity.impl.pseudoR2)
-    v.scatter((0,1), od_2011.MIGRATIONS, attr.impl.yhat, "k.", "Attraction constrained fit: R^2=%.2f" % attr.impl.pseudoR2)
-    v.scatter((0,2), od_2011.MIGRATIONS, doubly.impl.yhat, "r.", "Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
+    v.scatter((0,1), od_2011.MIGRATIONS, prod.impl.yhat, "k.", "Production constrained fit: R^2=%.2f" % prod.impl.pseudoR2)
+    #v.scatter((0,2), od_2011.MIGRATIONS, doubly.impl.yhat, "r.", "Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
 
-    # v.polygons((0,2), gdf, [120000, 670000], [0, 550000], "white", "lightgrey")
-    # v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], [120000, 670000], [0, 550000], "white", "orange")
-    # v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], [120000, 670000], [0, 550000], "white", "red")
+    # TODO change in population...
+    v.polygons((0,2), gdf, [120000, 670000], [0, 550000], "lightgrey")
+    v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], [120000, 670000], [0, 550000], "orange")
+    v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], [120000, 670000], [0, 550000], "red")
 
     v.matrix((1,0), np.log(odmatrix+1), "Greens", title="Actual OD matrix (displaced log scale)")
-    v.matrix((1,1), np.log(model_odmatrix+1), "Oranges", title="Gravity model OD matrix (displaced log scale)")
+    v.matrix((1,1), np.log(model_odmatrix+1), "Greys", title="Gravity model OD matrix (displaced log scale)")
     # we get away with log here as no values are -ve
-    #v.matrix((1,2), np.log(1+delta_od), title="Gravity model perturbed OD matrix delta")
-    absmax = max(np.max(delta_od),-np.min(delta_od))
-    v.matrix((1,2), delta_od, 'RdBu', title="Gravity model perturbed OD matrix delta", clim=(-absmax/5,absmax/5))
+    v.matrix((1,2), np.log(1+delta_od), "Oranges", title="Gravity model perturbed OD matrix delta")
+    #absmax = max(np.max(delta_od),-np.min(delta_od))
+    #v.matrix((1,2), delta_od, 'RdBu', title="Gravity model perturbed OD matrix delta", clim=(-absmax/50,absmax/50))
 
     v.show()
     #v.to_png("doc/img/sim_basic.png")
