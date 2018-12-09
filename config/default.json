@@ -6,5 +6,6 @@
   "start_year": 2011,
   "end_year": 2023,
   "cache_dir": "../microsimulation/cache",
-  "output_dir": "./data"
+  "output_dir": "./data",
+  "graphics": true
 }

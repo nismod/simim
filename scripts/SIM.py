@@ -30,8 +30,6 @@ arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06
 
 def main(params):
 
-  do_graphs = True
-
   coverage = { "EW": ukpoputils.EW, "GB": ukpoputils.GB, "UK": ukpoputils.UK}.get(params["coverage"]) 
   if not coverage:
     raise RuntimeError("invalid coverage: %s" % params["coverage"])
@@ -152,11 +150,20 @@ def main(params):
   #od_2011["CHANGED_MIGRATIONS"] = gravity(od_2011.PEOPLE.values, od_2011.CHANGED_HOUSEHOLDS.values)
 
   changed_odmatrix = od_matrix(od_2011, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
+  delta_odmatrix = changed_odmatrix - model_odmatrix
 
-  delta_od = changed_odmatrix - model_odmatrix
+  delta = pd.DataFrame({"o_lad16cd": od_2011.O_GEOGRAPHY_CODE, 
+                        "d_lad16cd": od_2011.D_GEOGRAPHY_CODE, 
+                        "delta": -od_2011.CHANGED_MIGRATIONS + gravity.dataset.MODEL_MIGRATIONS})
+  # remove in-LAD migrations and sun
+  o_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
+  d_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
+  delta = o_delta.merge(d_delta)
+  delta["net_delta"] = delta.o_delta - delta.d_delta
+  print(delta)
 
   # visualise
-  if do_graphs:
+  if params["graphics"]:
     # fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
     v = visuals.Visual(2,3)
 
@@ -165,19 +172,23 @@ def main(params):
     #v.scatter((0,2), od_2011.MIGRATIONS, doubly.impl.yhat, "r.", "Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
 
     # TODO change in population...
-    v.polygons((0,2), gdf, [120000, 670000], [0, 550000], "lightgrey")
-    v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], [120000, 670000], [0, 550000], "orange")
-    v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], [120000, 670000], [0, 550000], "red")
+    # v.polygons((0,2), gdf, [120000, 670000], [0, 550000], "lightgrey")
+    # v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], [120000, 670000], [0, 550000], "orange")
+    # v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], [120000, 670000], [0, 550000], "red")
+    gdf = gdf.merge(delta)
+    limits = (-np.max(gdf.net_delta)/2, np.max(gdf.net_delta)/2)
+    v.polygons2((0,2), gdf, [120000, 670000], [0, 550000], gdf.net_delta, cmap="seismic", clim=limits, edgecolor="darkgrey", linewidth=0.25)
+    v.panel((0,2)).set_title("Gravity migration model implied impact on population")
 
     v.matrix((1,0), np.log(odmatrix+1), "Greens", title="Actual OD matrix (displaced log scale)")
     v.matrix((1,1), np.log(model_odmatrix+1), "Greys", title="Gravity model OD matrix (displaced log scale)")
     # we get away with log here as no values are -ve
-    v.matrix((1,2), np.log(1+delta_od), "Oranges", title="Gravity model perturbed OD matrix delta")
+    v.matrix((1,2), np.log(1+delta_odmatrix), "Oranges", title="Gravity model perturbed OD matrix delta")
     #absmax = max(np.max(delta_od),-np.min(delta_od))
     #v.matrix((1,2), delta_od, 'RdBu', title="Gravity model perturbed OD matrix delta", clim=(-absmax/50,absmax/50))
 
     v.show()
-    #v.to_png("doc/img/sim_basic.png")
+    v.to_png("doc/img/sim_basic.png")
 
 if __name__ == "__main__":
   

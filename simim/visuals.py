@@ -31,7 +31,7 @@ class Visual:
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
 
-  def polygons(self, panel, gdf, xlim, ylim, fill_colour="darkgrey", edge_colour="lightgrey"):
+  def polygons(self, panel, gdf, xlim, ylim, **kwargs):
     #ax = self.axes[panel]
     ax = self.panel(panel)
     ax.axis("off")
@@ -40,7 +40,18 @@ class Visual:
     if ylim:
       ax.set_ylim(ylim)
 
-    plot_polygon_collection(ax, gdf['geometry'], edgecolor=edge_colour, facecolor=fill_colour, linewidth=0.25)
+    plot_polygon_collection(ax, gdf['geometry'], linewidth=0.25, **kwargs)
+
+  def polygons2(self, panel, gdf, xlim, ylim, values, **kwargs):
+    #ax = self.axes[panel]
+    ax = self.panel(panel)
+    ax.axis("off")
+    if xlim:
+      ax.set_xlim(xlim)
+    if ylim:
+      ax.set_ylim(ylim)
+
+    plot_polygon_collection(ax, gdf['geometry'], values=values, **kwargs)
 
   def show(self):
     plt.tight_layout()
