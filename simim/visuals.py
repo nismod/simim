@@ -17,41 +17,32 @@ class Visual:
       return self.axes
     return self.axes[index]
 
-  def scatter(self, panel, x, y, marker="k.", title=None, **kwargs):
+  def scatter(self, panel, x, y, marker, title=None, **kwargs):
     ax = self.panel(panel)
     if title:
       ax.set_title(title)
     ax.plot(x, y, marker, **kwargs)
 
-  def matrix(self, panel, matrix, cmap="Greys", title=None, **kwargs):
+  def matrix(self, panel, matrix, title=None, **kwargs):
     ax = self.panel(panel)
     if title:
       ax.set_title(title)
-    ax.imshow(matrix, cmap=cmap, **kwargs)
+    ax.imshow(matrix, **kwargs)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
 
-  def polygons(self, panel, gdf, xlim, ylim, **kwargs):
+  def polygons(self, panel, gdf, title=None, xlim=None, ylim=None, **kwargs):
     #ax = self.axes[panel]
     ax = self.panel(panel)
     ax.axis("off")
+    if title:
+      ax.set_title(title)
     if xlim:
       ax.set_xlim(xlim)
     if ylim:
       ax.set_ylim(ylim)
 
-    plot_polygon_collection(ax, gdf['geometry'], linewidth=0.25, **kwargs)
-
-  def polygons2(self, panel, gdf, xlim, ylim, values, **kwargs):
-    #ax = self.axes[panel]
-    ax = self.panel(panel)
-    ax.axis("off")
-    if xlim:
-      ax.set_xlim(xlim)
-    if ylim:
-      ax.set_ylim(ylim)
-
-    plot_polygon_collection(ax, gdf['geometry'], values=values, **kwargs)
+    plot_polygon_collection(ax, gdf['geometry'], **kwargs)
 
   def show(self):
     plt.tight_layout()

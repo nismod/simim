@@ -167,28 +167,35 @@ def main(params):
     # fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
     v = visuals.Visual(2,3)
 
-    v.scatter((0,0), od_2011.MIGRATIONS, gravity.impl.yhat, "b.", "Gravity (unconstrained) fit: R^2=%.2f" % gravity.impl.pseudoR2)
-    v.scatter((0,1), od_2011.MIGRATIONS, prod.impl.yhat, "k.", "Production constrained fit: R^2=%.2f" % prod.impl.pseudoR2)
+    v.scatter((0,0), od_2011.MIGRATIONS, gravity.impl.yhat, "b.", title="Gravity (unconstrained) fit: R^2=%.2f" % gravity.impl.pseudoR2)
+    v.scatter((0,1), od_2011.MIGRATIONS, prod.impl.yhat, "k.", title="Production constrained fit: R^2=%.2f" % prod.impl.pseudoR2)
     #v.scatter((0,2), od_2011.MIGRATIONS, doubly.impl.yhat, "r.", "Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
 
     # TODO change in population...
-    # v.polygons((0,2), gdf, [120000, 670000], [0, 550000], "lightgrey")
-    # v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], [120000, 670000], [0, 550000], "orange")
-    # v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], [120000, 670000], [0, 550000], "red")
+    # v.polygons((0,2), gdf, xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="lightgrey")
+    # v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="orange")
+    # v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="red")
     gdf = gdf.merge(delta)
-    limits = (-np.max(gdf.net_delta)/2, np.max(gdf.net_delta)/2)
-    v.polygons2((0,2), gdf, [120000, 670000], [0, 550000], gdf.net_delta, cmap="seismic", clim=limits, edgecolor="darkgrey", linewidth=0.25)
-    v.panel((0,2)).set_title("Gravity migration model implied impact on population")
+    # net emigration in blue
+    net_out = gdf[gdf.net_delta < 0.0]
+    v.polygons((0,2), net_out, title="Gravity migration model implied impact on population", xlim=[120000, 670000], ylim=[0, 550000], 
+      values=-net_out.net_delta, clim=(0, np.max(-net_out.net_delta)), cmap="Blues", edgecolor="darkgrey", linewidth=0.25)
+    # net immigration in red
+    net_in = gdf[gdf.net_delta >= 0.0] 
+    v.polygons((0,2), net_in, xlim=[120000, 670000], ylim=[0, 550000], 
+      values=net_in.net_delta, clim=(0, np.max(net_in.net_delta)), cmap="Reds", edgecolor="darkgrey", linewidth=0.25)
 
-    v.matrix((1,0), np.log(odmatrix+1), "Greens", title="Actual OD matrix (displaced log scale)")
-    v.matrix((1,1), np.log(model_odmatrix+1), "Greys", title="Gravity model OD matrix (displaced log scale)")
+    print(gdf[gdf.net_delta >= 0.0])
+
+    v.matrix((1,0), np.log(odmatrix+1), cmap="Greens", title="Actual OD matrix (displaced log scale)")
+    v.matrix((1,1), np.log(model_odmatrix+1), cmap="Greys", title="Gravity model OD matrix (displaced log scale)")
     # we get away with log here as no values are -ve
-    v.matrix((1,2), np.log(1+delta_odmatrix), "Oranges", title="Gravity model perturbed OD matrix delta")
+    v.matrix((1,2), np.log(1+delta_odmatrix), cmap="Oranges", title="Gravity model perturbed OD matrix delta")
     #absmax = max(np.max(delta_od),-np.min(delta_od))
     #v.matrix((1,2), delta_od, 'RdBu', title="Gravity model perturbed OD matrix delta", clim=(-absmax/50,absmax/50))
 
     v.show()
-    v.to_png("doc/img/sim_basic.png")
+    #v.to_png("doc/img/sim_basic.png")
 
 if __name__ == "__main__":
   
