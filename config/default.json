@@ -3,8 +3,7 @@
   "model_type": "gravity",
   "model_subtype": "pow",
   "base_projection": "ppp",
-  "start_year": 2011,
-  "end_year": 2023,
+  "scenario": "./scenario1.csv",
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data",
   "graphics": true

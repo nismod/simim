@@ -5,24 +5,18 @@ import pandas as pd
 import geopandas 
 import matplotlib.pyplot as plt
 import contextily as ctx
-import simim.data as data
+import simim.data_apis as data_apis
 import simim.models as models
 import simim.visuals as visuals
 
 # import statsmodels.api as sm
 # #import statsmodels.formula.api as smf
 
-from pysal.contrib.spint.gravity import Gravity
-from pysal.contrib.spint.gravity import Attraction
-from pysal.contrib.spint.gravity import Doubly
-
-import ukcensusapi.Nomisweb as Nomisweb
-import ukcensusapi.NRScotland as NRScotland
-import ukcensusapi.NISRA as NISRA
+# from pysal.contrib.spint.gravity import Gravity
+# from pysal.contrib.spint.gravity import Attraction
+# from pysal.contrib.spint.gravity import Doubly
 
 from simim.utils import get_shapefile, calc_distances, od_matrix, get_config
-
-import ukpopulation.utils as ukpoputils
 
 ctrlads = ["E07000178", "E06000042", "E07000008"]
 arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
@@ -30,15 +24,11 @@ arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06
 
 def main(params):
 
-  coverage = { "EW": ukpoputils.EW, "GB": ukpoputils.GB, "UK": ukpoputils.UK}.get(params["coverage"]) 
-  if not coverage:
-    raise RuntimeError("invalid coverage: %s" % params["coverage"])
+  #snpp =
 
-  census_ew = Nomisweb.Nomisweb(params["cache_dir"])
-  census_sc = NRScotland.NRScotland(params["cache_dir"])
-  census_ni = NISRA.NISRA(params["cache_dir"])
+  data = data_apis.Instance(params)
 
-  od_2011 = data.get_od(census_ew)
+  od_2011 = data.get_od()
 
   # # CMLAD codes...
   # print("E06000048" in od_2011.USUAL_RESIDENCE_CODE.unique())
@@ -69,11 +59,24 @@ def main(params):
 
   geogs = od_2011.O_GEOGRAPHY_CODE.unique()
 
-  # people
-  #p_2011 = data.get_people(census_ew, census_sc, census_ni if do_NI else None)
-  snpp = data.get_people(params["start_year"], geogs, params["cache_dir"])
+  timeline = data.scenario_timeline()
 
-  snhp = data.get_households(census_ew, census_sc, census_ni if ukpoputils.NI in coverage else None)
+  # loop from snpp start to scenario start
+
+  for year in range(data.snpp.min_year("en"), timeline[0]):
+    print("TODO pre-scenario %d" % year)
+
+  # loop over scenario years
+  for year in data.scenario_timeline():
+    print("scenario %d" % year)
+
+    # people
+    #p_2011 = data.get_people(census_ew, census_sc, census_ni if do_NI else None)
+    # int() workaround for ukpopulation#28
+    snpp = data.get_people(int(2011), geogs)
+    break
+
+  snhp = data.get_households()
 
   # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
@@ -95,7 +98,8 @@ def main(params):
   dataset.loc[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
   print(dataset.head())
 
-  if ukpoputils.NI not in coverage:
+  # TODO 
+  if "ni" not in data.coverage:
     ni = ['95TT', '95XX', '95OO', '95GG', '95DD', '95QQ', '95ZZ', '95VV', '95YY', '95CC',
           '95II', '95NN', '95AA', '95RR', '95MM', '95LL', '95FF', '95BB', '95SS', '95HH',
           '95EE', '95PP', '95UU', '95WW', '95KK', '95JJ']
@@ -119,7 +123,7 @@ def main(params):
 
   if params["model_type"] == "gravity":
     model = gravity
-  elif params["model_type"] == "prod":
+  elif params["model_type"] == "production":
     model = prod
 
 
@@ -134,7 +138,7 @@ def main(params):
   print("Unconstrained Poisson Fitted R2 = %f" % model.impl.pseudoR2)
   print("Unconstrained Poisson Fitted RMSE = %f" % model.impl.SRMSE)
 
-  model_odmatrix = od_matrix(gravity.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
+  model_odmatrix = od_matrix(model.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
   camkox = ctrlads.copy()
   camkox.extend(arclads)
@@ -146,7 +150,7 @@ def main(params):
   #print(dataset[dataset.MIGRATIONS != dataset.CHANGED_HOUSEHOLDS])
 
   dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, dataset.CHANGED_HOUSEHOLDS.values)
-  # print(gravity.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
+  # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
 
   # update populations and recompute (numerically noisy?)
   #dataset["PEOPLE"] = dataset["PEOPLE"] + dataset["CHANGED_MIGRATIONS"] - dataset["MIGRATIONS"]
@@ -157,7 +161,7 @@ def main(params):
 
   delta = pd.DataFrame({"o_lad16cd": dataset.O_GEOGRAPHY_CODE, 
                         "d_lad16cd": dataset.D_GEOGRAPHY_CODE, 
-                        "delta": -dataset.CHANGED_MIGRATIONS + gravity.dataset.MODEL_MIGRATIONS})
+                        "delta": -dataset.CHANGED_MIGRATIONS + model.dataset.MODEL_MIGRATIONS})
   # remove in-LAD migrations and sun
   o_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
   d_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
@@ -198,7 +202,7 @@ def main(params):
     #v.matrix((1,2), delta_od, 'RdBu', title="Gravity model perturbed OD matrix delta", clim=(-absmax/50,absmax/50))
 
     v.show()
-    v.to_png("doc/img/sim_basic.png")
+    #v.to_png("doc/img/sim_basic.png")
 
 if __name__ == "__main__":
   

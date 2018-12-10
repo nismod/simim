@@ -103,7 +103,7 @@ class Model:
         ybar = (np.exp(self.k()) * xo ** self.mu() * xd ** self.alpha() * np.exp(self.dataset[self.cost_col] * self.beta()))
       return ybar
     elif self.model_type == "production":
-      assert xo is None
+      #assert xo is None
       assert xd is not None
       #mu = np.repeat(self.mu(), int(len(self.dataset)/len(self.mu())))
       mu = np.append(0, self.mu())
@@ -119,7 +119,7 @@ class Model:
       return ybar
     elif self.model_type == "attraction":
       assert xo is not None
-      assert xd is None
+      #assert xd is None
       alpha = np.append(0,self.alpha())
       alpha = np.repeat(alpha, int(len(self.dataset)/len(alpha)))
       # NB ordering is not guaranteed
