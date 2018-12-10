@@ -71,9 +71,9 @@ def main(params):
 
   # people
   #p_2011 = data.get_people(census_ew, census_sc, census_ni if do_NI else None)
-  p_2011 = data.get_people(params["start_year"], geogs, params["cache_dir"])
+  snpp = data.get_people(params["start_year"], geogs, params["cache_dir"])
 
-  hh_2011 = data.get_households(census_ew, census_sc, census_ni if ukpoputils.NI in coverage else None)
+  snhp = data.get_households(census_ew, census_sc, census_ni if ukpoputils.NI in coverage else None)
 
   # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
@@ -83,78 +83,81 @@ def main(params):
   print(dists.head())
 
   # merge with OD
-  od_2011 = od_2011.merge(dists, how="left", left_on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"], right_on=["orig", "dest"]).drop(["orig", "dest"], axis=1)
-
+  dataset = od_2011.merge(dists, how="left", left_on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"], right_on=["orig", "dest"]).drop(["orig", "dest"], axis=1)
   # Merge population *at origin*
-  od_2011 = od_2011.merge(p_2011, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
+  dataset = dataset.merge(snpp, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
   # Merge households *at destination*
-  od_2011 = od_2011.merge(hh_2011, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
+  dataset = dataset.merge(snhp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
 
   #print(odmatrix.shape)
 
-
   # set epsilon dist for O=D rows
-  od_2011.loc[od_2011.O_GEOGRAPHY_CODE == od_2011.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
-  print(od_2011.head())
+  dataset.loc[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
+  print(dataset.head())
 
   if ukpoputils.NI not in coverage:
     ni = ['95TT', '95XX', '95OO', '95GG', '95DD', '95QQ', '95ZZ', '95VV', '95YY', '95CC',
           '95II', '95NN', '95AA', '95RR', '95MM', '95LL', '95FF', '95BB', '95SS', '95HH',
           '95EE', '95PP', '95UU', '95WW', '95KK', '95JJ']
-    od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isin(ni)) & (~od_2011.D_GEOGRAPHY_CODE.isin(ni))]
-    odmatrix = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].set_index(["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]).unstack().values
+    dataset = dataset[(~dataset.O_GEOGRAPHY_CODE.isin(ni)) & (~dataset.D_GEOGRAPHY_CODE.isin(ni))]
+    odmatrix = dataset[["MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].set_index(["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]).unstack().values
   
   # remove O=D rows and reset index
-  #od_2011 = od_2011[od_2011.O_GEOGRAPHY_CODE != od_2011.D_GEOGRAPHY_CODE].reset_index(drop=True)
-
+  #dataset = dataset[dataset.O_GEOGRAPHY_CODE != dataset.D_GEOGRAPHY_CODE].reset_index(drop=True)
   # miniSIM
-  #od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE.isin(arclads)) & (od_2011.D_GEOGRAPHY_CODE.isin(arclads))]
+  #dataset = dataset[(dataset.O_GEOGRAPHY_CODE.isin(arclads)) & (dataset.D_GEOGRAPHY_CODE.isin(arclads))]
 
-  odmatrix = od_matrix(od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
+  odmatrix = od_matrix(dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
   print("model: %s[IGNORED] (%s)" % (params["model_type"], params["model_subtype"]))
 
-  gravity = models.Model("gravity", params["model_subtype"], od_2011, "MIGRATIONS", "PEOPLE", "HOUSEHOLDS", "DISTANCE")
-  prod = models.Model("production", params["model_subtype"], od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
-  # TOO CONSTRAINED!
-  # attr = models.Model("attraction", params["model_subtype"], od_2011, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
-  # doubly = models.Model("doubly", params["model_subtype"], od_2011, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "DISTANCE")
+  gravity = models.Model("gravity", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "HOUSEHOLDS", "DISTANCE")
+  prod = models.Model("production", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
+  # These models are too constrained - no way of perturbing the attractiveness
+  # attr = models.Model("attraction", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
+  # doubly = models.Model("doubly", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "DISTANCE")
+
+  if params["model_type"] == "gravity":
+    model = gravity
+  elif params["model_type"] == "prod":
+    model = prod
+
 
   # print(prod.impl.params)
   # print(attr.impl.params)
-  # check = pd.DataFrame({"P_YHAT": prod.impl.yhat, "P_MANUAL": prod(xd=od_2011.HOUSEHOLDS.values), "P_MU": prod.dataset.mu,
-  #                       "A_YHAT": attr.impl.yhat, "A_MANUAL": attr(xo=od_2011.PEOPLE.values), "A_ALPHA": attr.dataset.alpha})
+  # check = pd.DataFrame({"P_YHAT": prod.impl.yhat, "P_MANUAL": prod(xd=dataset.HOUSEHOLDS.values), "P_MU": prod.dataset.mu,
+  #                       "A_YHAT": attr.impl.yhat, "A_MANUAL": attr(xo=dataset.PEOPLE.values), "A_ALPHA": attr.dataset.alpha})
   # check.to_csv("./check.csv", index=None)
   # stop
 
 
-  print("Unconstrained Poisson Fitted R2 = %f" % gravity.impl.pseudoR2)
-  print("Unconstrained Poisson Fitted RMSE = %f" % gravity.impl.SRMSE)
+  print("Unconstrained Poisson Fitted R2 = %f" % model.impl.pseudoR2)
+  print("Unconstrained Poisson Fitted RMSE = %f" % model.impl.SRMSE)
 
   model_odmatrix = od_matrix(gravity.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
   camkox = ctrlads.copy()
   camkox.extend(arclads)
 
-  od_2011["CHANGED_HOUSEHOLDS"] = od_2011.HOUSEHOLDS
-  #od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] = od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] + 300000 
-  #od_2011.loc[od_2011.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] = od_2011.loc[od_2011.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] + 10000 
-  od_2011.loc[od_2011.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] = od_2011.loc[od_2011.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] + 20000 
-  #print(od_2011[od_2011.MIGRATIONS != od_2011.CHANGED_HOUSEHOLDS])
+  dataset["CHANGED_HOUSEHOLDS"] = dataset.HOUSEHOLDS
+  #dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] + 300000 
+  #dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] + 10000 
+  dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] + 20000 
+  #print(dataset[dataset.MIGRATIONS != dataset.CHANGED_HOUSEHOLDS])
 
-  od_2011["CHANGED_MIGRATIONS"] = gravity(od_2011.PEOPLE.values, od_2011.CHANGED_HOUSEHOLDS.values)
-  # print(gravity.dataset[od_2011.MIGRATIONS != od_2011.CHANGED_MIGRATIONS])
+  dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, dataset.CHANGED_HOUSEHOLDS.values)
+  # print(gravity.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
 
   # update populations and recompute (numerically noisy?)
-  #od_2011["PEOPLE"] = od_2011["PEOPLE"] + od_2011["CHANGED_MIGRATIONS"] - od_2011["MIGRATIONS"]
-  #od_2011["CHANGED_MIGRATIONS"] = gravity(od_2011.PEOPLE.values, od_2011.CHANGED_HOUSEHOLDS.values)
+  #dataset["PEOPLE"] = dataset["PEOPLE"] + dataset["CHANGED_MIGRATIONS"] - dataset["MIGRATIONS"]
+  #dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, dataset.CHANGED_HOUSEHOLDS.values)
 
-  changed_odmatrix = od_matrix(od_2011, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
+  changed_odmatrix = od_matrix(dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
   delta_odmatrix = changed_odmatrix - model_odmatrix
 
-  delta = pd.DataFrame({"o_lad16cd": od_2011.O_GEOGRAPHY_CODE, 
-                        "d_lad16cd": od_2011.D_GEOGRAPHY_CODE, 
-                        "delta": -od_2011.CHANGED_MIGRATIONS + gravity.dataset.MODEL_MIGRATIONS})
+  delta = pd.DataFrame({"o_lad16cd": dataset.O_GEOGRAPHY_CODE, 
+                        "d_lad16cd": dataset.D_GEOGRAPHY_CODE, 
+                        "delta": -dataset.CHANGED_MIGRATIONS + gravity.dataset.MODEL_MIGRATIONS})
   # remove in-LAD migrations and sun
   o_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
   d_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
@@ -167,9 +170,9 @@ def main(params):
     # fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
     v = visuals.Visual(2,3)
 
-    v.scatter((0,0), od_2011.MIGRATIONS, gravity.impl.yhat, "b.", title="Gravity (unconstrained) fit: R^2=%.2f" % gravity.impl.pseudoR2)
-    v.scatter((0,1), od_2011.MIGRATIONS, prod.impl.yhat, "k.", title="Production constrained fit: R^2=%.2f" % prod.impl.pseudoR2)
-    #v.scatter((0,2), od_2011.MIGRATIONS, doubly.impl.yhat, "r.", "Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
+    v.scatter((0,0), dataset.MIGRATIONS, gravity.impl.yhat, "b.", title="Gravity (unconstrained) fit: R^2=%.2f" % gravity.impl.pseudoR2)
+    v.scatter((0,1), dataset.MIGRATIONS, prod.impl.yhat, "k.", title="Production constrained fit: R^2=%.2f" % prod.impl.pseudoR2)
+    #v.scatter((0,2), dataset.MIGRATIONS, doubly.impl.yhat, "r.", "Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
 
     # TODO change in population...
     # v.polygons((0,2), gdf, xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="lightgrey")
@@ -195,7 +198,7 @@ def main(params):
     #v.matrix((1,2), delta_od, 'RdBu', title="Gravity model perturbed OD matrix delta", clim=(-absmax/50,absmax/50))
 
     v.show()
-    #v.to_png("doc/img/sim_basic.png")
+    v.to_png("doc/img/sim_basic.png")
 
 if __name__ == "__main__":
   
