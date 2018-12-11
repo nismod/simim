@@ -1,6 +1,11 @@
 """
 data download functionality
 """
+import os
+import requests
+import zipfile
+import geopandas as gpd
+import re
 
 import numpy as np
 import pandas as pd
@@ -12,8 +17,10 @@ import ukcensusapi.NISRA as NISRA
 import ukpopulation.myedata as MYEData
 import ukpopulation.snppdata as SNPPData
 import ukpopulation.nppdata as NPPData
+
 import ukpopulation.utils as ukpoputils
 
+import simim.utils as utils
 
 class Instance():
   def __init__(self, params):
@@ -105,3 +112,33 @@ class Instance():
       
     households.rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1, inplace=True)
     return households
+
+  def get_shapefile(self, zip_url):
+    local_zipfile = os.path.join(self.cache_dir, utils.md5hash(zip_url) + ".zip")
+    if not os.path.isfile(local_zipfile):
+      response = requests.get(zip_url)
+      response.raise_for_status()
+      with open(local_zipfile, 'wb') as fd:
+        for chunk in response.iter_content(chunk_size=1024):
+          fd.write(chunk)
+      print("downloaded OK")
+    else: 
+      print("using cached data: %s" % local_zipfile)
+    
+    zip = zipfile.ZipFile(local_zipfile)
+    #print(zip.namelist())
+    # find a shapefile in the zip...
+    regex = re.compile(".*\.shp$")
+    f = filter(regex.match, zip.namelist())
+    shapefile = str(next(f))
+    # can't find a way of reading this directly into geopandas
+    zip.extractall(path=self.cache_dir)
+    return gpd.read_file(os.path.join(self.cache_dir, shapefile))
+
+  def get_lad_lookup(self):
+
+    lookup = pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
+
+    # only need the CMLAD->LAD mapping
+    return lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
+ 

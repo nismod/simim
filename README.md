@@ -3,6 +3,8 @@
 
 ** **work-in-progress** **
 
+NB this package requires the development version of [`ukpopulation`](https://github.com/nismod/ukpopulation)
+
 ### Example
 
 ![Example fits](doc/img/sim_basic.png)
