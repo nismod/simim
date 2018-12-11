@@ -3,8 +3,8 @@
   "model_type": "gravity",
   "model_subtype": "pow",
   "base_projection": "ppp",
-  "scenario": "./scenario1.csv",
+  "scenario": "scenario1.csv",
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data",
-  "graphics": true
+  "graphics": false
 }

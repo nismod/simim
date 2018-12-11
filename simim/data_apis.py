@@ -43,6 +43,8 @@ class Instance():
     # scenario data
     self.scenario = pd.read_csv(params["scenario"])
 
+    # TODO output dir check, df, filename
+
   def scenario_timeline(self):
     # TODO ensure no gaps...fill in?
     return sorted(self.scenario.YEAR.unique().astype(np.int32))
@@ -84,7 +86,7 @@ class Instance():
     # print(len(data))
     return data
 
-  def get_households(self):
+  def get_households(self, year, geogs):
 
     # households
     # get total household counts per LAD
@@ -138,7 +140,6 @@ class Instance():
   def get_lad_lookup(self):
 
     lookup = pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
-
     # only need the CMLAD->LAD mapping
     return lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
  

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import numpy as np
 import pandas as pd
 import geopandas 
@@ -19,6 +20,9 @@ arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06
 def main(params):
 
   data = data_apis.Instance(params)
+
+  if params["base_projection"] != "ppp":
+    raise NotImplementedError("TODO variant projections...")
 
   od_2011 = data.get_od()
 
@@ -75,90 +79,109 @@ def main(params):
 
   timeline = data.scenario_timeline()
 
+  camkox = ctrlads.copy()
+  camkox.extend(arclads)
+
   # loop from snpp start to scenario start
 
+  custom_variant = pd.DataFrame()
+
   for year in range(data.snpp.min_year("en"), timeline[0]):
+    snpp = data.get_people(year, geogs)
     print("TODO pre-scenario %d" % year)
 
   # loop over scenario years
   for year in data.scenario_timeline():
-    print("scenario %d" % year)
 
     # people
     #p_2011 = data.get_people(census_ew, census_sc, census_ni if do_NI else None)
     # int() workaround for ukpopulation#28
     snpp = data.get_people(year, geogs)
-    break
 
-  snhp = data.get_households()
+    snhp = data.get_households(year, geogs)
 
-  # Merge population *at origin*
-  dataset = od_2011
-  dataset = dataset.merge(snpp, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
-  # Merge households *at destination*
-  dataset = dataset.merge(snhp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
+    # Merge population *at origin*
+    dataset = od_2011
+    dataset = dataset.merge(snpp, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
+    # Merge households *at destination*
+    dataset = dataset.merge(snhp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
 
-  #print(odmatrix.shape)
-  
-  # remove O=D rows and reset index
-  #dataset = dataset[dataset.O_GEOGRAPHY_CODE != dataset.D_GEOGRAPHY_CODE].reset_index(drop=True)
-  # miniSIM
-  #dataset = dataset[(dataset.O_GEOGRAPHY_CODE.isin(arclads)) & (dataset.D_GEOGRAPHY_CODE.isin(arclads))]
+    #print(odmatrix.shape)
+    
+    # remove O=D rows and reset index
+    #dataset = dataset[dataset.O_GEOGRAPHY_CODE != dataset.D_GEOGRAPHY_CODE].reset_index(drop=True)
+    # miniSIM
+    #dataset = dataset[(dataset.O_GEOGRAPHY_CODE.isin(arclads)) & (dataset.D_GEOGRAPHY_CODE.isin(arclads))]
 
-  odmatrix = od_matrix(dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
+    odmatrix = od_matrix(dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
-  #print(dataset.head())
+    #print(dataset.head())
 
-  gravity = models.Model("gravity", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "HOUSEHOLDS", "DISTANCE")
-  prod = models.Model("production", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
-  # These models are too constrained - no way of perturbing the attractiveness
-  # attr = models.Model("attraction", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
-  # doubly = models.Model("doubly", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "DISTANCE")
+    gravity = models.Model("gravity", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "HOUSEHOLDS", "DISTANCE")
+    prod = models.Model("production", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
+    # These models are too constrained - no way of perturbing the attractiveness
+    # attr = models.Model("attraction", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
+    # doubly = models.Model("doubly", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "DISTANCE")
 
-  if params["model_type"] == "gravity":
-    model = gravity
-  elif params["model_type"] == "production":
-    model = prod
+    if params["model_type"] == "gravity":
+      model = gravity
+    elif params["model_type"] == "production":
+      model = prod
 
-  # print(prod.impl.params)
-  # print(attr.impl.params)
-  # check = pd.DataFrame({"P_YHAT": prod.impl.yhat, "P_MANUAL": prod(xd=dataset.HOUSEHOLDS.values), "P_MU": prod.dataset.mu,
-  #                       "A_YHAT": attr.impl.yhat, "A_MANUAL": attr(xo=dataset.PEOPLE.values), "A_ALPHA": attr.dataset.alpha})
-  # check.to_csv("./check.csv", index=None)
-  # stop
+    # print(prod.impl.params)
+    # print(attr.impl.params)
+    # check = pd.DataFrame({"P_YHAT": prod.impl.yhat, "P_MANUAL": prod(xd=dataset.HOUSEHOLDS.values), "P_MU": prod.dataset.mu,
+    #                       "A_YHAT": attr.impl.yhat, "A_MANUAL": attr(xo=dataset.PEOPLE.values), "A_ALPHA": attr.dataset.alpha})
+    # check.to_csv("./check.csv", index=None)
+    # stop
 
-  print("%s/%s Poisson fit R2 = %f, RMSE=%f" % (params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
+    print("scenario %d %s/%s Poisson fit R2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
 
-  model_odmatrix = od_matrix(model.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
+    model_odmatrix = od_matrix(model.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
-  camkox = ctrlads.copy()
-  camkox.extend(arclads)
+    dataset["CHANGED_HOUSEHOLDS"] = dataset.HOUSEHOLDS
 
-  dataset["CHANGED_HOUSEHOLDS"] = dataset.HOUSEHOLDS
-  #dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] + 300000 
-  #dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] + 10000 
-  dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] + 20000 
-  #print(dataset[dataset.MIGRATIONS != dataset.CHANGED_HOUSEHOLDS])
+    # TODO apply cumulative perturbations to attractiveness from scenario
 
-  dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, dataset.CHANGED_HOUSEHOLDS.values)
-  # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
+    #dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] + 300000 
+    #dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] + 10000 
+    dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] + 20000 
+    #print(dataset[dataset.MIGRATIONS != dataset.CHANGED_HOUSEHOLDS])
 
-  # update populations and recompute (numerically noisy?)
-  #dataset["PEOPLE"] = dataset["PEOPLE"] + dataset["CHANGED_MIGRATIONS"] - dataset["MIGRATIONS"]
-  #dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, dataset.CHANGED_HOUSEHOLDS.values)
+    dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, dataset.CHANGED_HOUSEHOLDS.values)
+    # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
 
-  changed_odmatrix = od_matrix(dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
-  delta_odmatrix = changed_odmatrix - model_odmatrix
+    # update populations and recompute (numerically noisy?)
+    #dataset["PEOPLE"] = dataset["PEOPLE"] + dataset["CHANGED_MIGRATIONS"] - dataset["MIGRATIONS"]
+    #dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, dataset.CHANGED_HOUSEHOLDS.values)
 
-  delta = pd.DataFrame({"o_lad16cd": dataset.O_GEOGRAPHY_CODE, 
-                        "d_lad16cd": dataset.D_GEOGRAPHY_CODE, 
-                        "delta": -dataset.CHANGED_MIGRATIONS + model.dataset.MODEL_MIGRATIONS})
-  # remove in-LAD migrations and sun
-  o_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
-  d_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
-  delta = o_delta.merge(d_delta)
-  delta["net_delta"] = delta.o_delta - delta.d_delta
-  #print(delta)
+    changed_odmatrix = od_matrix(dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
+    delta_odmatrix = changed_odmatrix - model_odmatrix
+
+    delta = pd.DataFrame({"o_lad16cd": dataset.O_GEOGRAPHY_CODE, 
+                          "d_lad16cd": dataset.D_GEOGRAPHY_CODE, 
+                          "delta": -dataset.CHANGED_MIGRATIONS + model.dataset.MODEL_MIGRATIONS})
+    # remove in-LAD migrations and sun
+    o_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
+    d_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
+    delta = o_delta.merge(d_delta)
+    delta["net_delta"] = delta.o_delta - delta.d_delta
+
+    snpp = snpp.merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
+    snpp["YEAR"] = year
+    #print(delta.head())
+    #print(snpp.head())
+
+    custom_variant = custom_variant.append(snpp, ignore_index=True)
+
+  # for year in range(timeline[-1], data.snpp.max_year("en") + 1):
+  #   print("TODO post-scenario %d" % year)
+  #   TODO start from previous year's (perturbed) snpp?
+  #   TODO repeatedly apply (past) cumulative perturbations
+
+  outfile = os.path.join(params["output_dir"], "simim_" + params["base_projection"] + params["scenario"])
+  print("writing custom SNPP variant data to %s" % outfile)
+  custom_variant.to_csv(outfile, index=False)
 
   # visualise
   if params["graphics"]:
