@@ -41,9 +41,15 @@ class Instance():
     # TODO households...
 
     # scenario data
+    self.baseline = params["base_projection"]
     self.scenario = pd.read_csv(params["scenario"])
 
-    # TODO output dir check, df, filename
+    if not os.path.isdir(params["output_dir"]):
+      raise ValueError("Output directory %s not found" % params["output_dir"])
+
+    self.output_file = os.path.join(params["output_dir"], "simim_" + params["base_projection"] + "_" + os.path.basename(params["scenario"]))
+    self.custom_snpp_variant = pd.DataFrame()
+
 
   def scenario_timeline(self):
     # TODO ensure no gaps...fill in?
@@ -142,4 +148,11 @@ class Instance():
     lookup = pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
     # only need the CMLAD->LAD mapping
     return lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
- 
+
+  def append_output(self, dataset, year):
+    dataset["YEAR"] = year
+    self.custom_snpp_variant = self.custom_snpp_variant.append(dataset, ignore_index=True)
+
+  def write_output(self):
+    self.custom_snpp_variant.to_csv(self.output_file, index=False)
+

@@ -21,6 +21,9 @@ def main(params):
   for year in years:
     scenario = scenario.append(pd.DataFrame({"GEOGRAPHY_CODE": camkox, "YEAR": year, "HOUSEHOLDS": hh_per_year_per_lad}), ignore_index=True)
 
+  # identify by LAD
+  scenario.HOUSEHOLDS = scenario.HOUSEHOLDS + pd.to_numeric(scenario.GEOGRAPHY_CODE.str[-3:])
+
   scenario["CUM_HOUSEHOLDS"] = None 
   for g in scenario.GEOGRAPHY_CODE.unique():
     for year in scenario.YEAR.unique():

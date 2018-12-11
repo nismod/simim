@@ -17,6 +17,19 @@ class Visual:
       return self.axes
     return self.axes[index]
 
+  # TODO legend not working
+  def line(self, panel, x, y, marker, title=None, xlabel=None, ylabel=None, **kwargs):
+    ax = self.panel(panel)
+    if xlabel:
+      ax.set_xlabel(xlabel)
+    if ylabel:
+      ax.set_ylabel(ylabel)
+    if title:
+      ax.set_title(title)
+    # if "label" in kwargs:
+    #   ax.legend()
+    ax.plot(x, y, marker, **kwargs)
+
   def scatter(self, panel, x, y, marker, title=None, **kwargs):
     ax = self.panel(panel)
     if title:

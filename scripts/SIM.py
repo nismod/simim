@@ -14,8 +14,8 @@ import ukpopulation.utils as ukpoputils
 
 from simim.utils import calc_distances, od_matrix, get_config
 
-ctrlads = ["E07000178", "E06000042", "E07000008"]
-arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
+# ctrlads = ["E07000178", "E06000042", "E07000008"]
+# arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
 
 def main(params):
 
@@ -79,20 +79,21 @@ def main(params):
 
   timeline = data.scenario_timeline()
 
-  camkox = ctrlads.copy()
-  camkox.extend(arclads)
-
-  # loop from snpp start to scenario start
-
   custom_variant = pd.DataFrame()
 
+  # loop from snpp start to scenario start
   for year in range(data.snpp.min_year("en"), timeline[0]):
     snpp = data.get_people(year, geogs)
-    print("TODO pre-scenario %d" % year)
+    snpp["net_delta"] = 0
+    data.append_output(snpp, year)
+    print("pre-scenario %d" % year)
 
-  # loop over scenario years
-  for year in data.scenario_timeline():
+  most_recent_scenario = None
 
+  # loop over scenario years (up to 2039 due to Wales SNPP still being 2014-based)
+  # TODO post-scenario years not working
+  for year in range(data.scenario_timeline()[0], data.scenario_timeline()[-1]+1):
+  #for year in range(data.scenario_timeline()[0], data.snpp.max_year("en") - 1):
     # people
     #p_2011 = data.get_people(census_ew, census_sc, census_ni if do_NI else None)
     # int() workaround for ukpopulation#28
@@ -118,15 +119,15 @@ def main(params):
     #print(dataset.head())
 
     gravity = models.Model("gravity", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "HOUSEHOLDS", "DISTANCE")
-    prod = models.Model("production", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
+    #prod = models.Model("production", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
     # These models are too constrained - no way of perturbing the attractiveness
     # attr = models.Model("attraction", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
     # doubly = models.Model("doubly", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "DISTANCE")
 
     if params["model_type"] == "gravity":
       model = gravity
-    elif params["model_type"] == "production":
-      model = prod
+    # elif params["model_type"] == "production":
+    #   model = prod
 
     # print(prod.impl.params)
     # print(attr.impl.params)
@@ -139,21 +140,23 @@ def main(params):
 
     model_odmatrix = od_matrix(model.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
-    dataset["CHANGED_HOUSEHOLDS"] = dataset.HOUSEHOLDS
-
-    # TODO apply cumulative perturbations to attractiveness from scenario
+    # if no scenario for a year, reuse the most recent (cumulative) figures
+    if year in data.scenario.YEAR.unique():
+      most_recent_scenario = data.scenario[data.scenario.YEAR==year]
+    # ensure there is a scenario
+    if most_recent_scenario is None:
+      raise ValueError("Unable to find a scenario for %s" % year)
+    #print(most_recent_scenario.head())
+    dataset = dataset.merge(data.scenario[data.scenario.YEAR==year].drop("HOUSEHOLDS", axis=1), how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
+      .drop(["GEOGRAPHY_CODE", "YEAR"], axis=1).fillna(0)
+    dataset["CHANGED_HOUSEHOLDS"] = dataset.HOUSEHOLDS + dataset.CUM_HOUSEHOLDS
 
     #dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] + 300000 
     #dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] + 10000 
-    dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] + 20000 
-    #print(dataset[dataset.MIGRATIONS != dataset.CHANGED_HOUSEHOLDS])
+    #dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] + 2000 
 
     dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, dataset.CHANGED_HOUSEHOLDS.values)
     # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
-
-    # update populations and recompute (numerically noisy?)
-    #dataset["PEOPLE"] = dataset["PEOPLE"] + dataset["CHANGED_MIGRATIONS"] - dataset["MIGRATIONS"]
-    #dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, dataset.CHANGED_HOUSEHOLDS.values)
 
     changed_odmatrix = od_matrix(dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
     delta_odmatrix = changed_odmatrix - model_odmatrix
@@ -168,28 +171,23 @@ def main(params):
     delta["net_delta"] = delta.o_delta - delta.d_delta
 
     snpp = snpp.merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
-    snpp["YEAR"] = year
-    #print(delta.head())
     #print(snpp.head())
+    data.append_output(snpp, year)
 
-    custom_variant = custom_variant.append(snpp, ignore_index=True)
-
-  # for year in range(timeline[-1], data.snpp.max_year("en") + 1):
-  #   print("TODO post-scenario %d" % year)
-  #   TODO start from previous year's (perturbed) snpp?
-  #   TODO repeatedly apply (past) cumulative perturbations
-
-  outfile = os.path.join(params["output_dir"], "simim_" + params["base_projection"] + params["scenario"])
-  print("writing custom SNPP variant data to %s" % outfile)
-  custom_variant.to_csv(outfile, index=False)
+  print("writing custom SNPP variant data to %s" % data.output_file)
+  data.write_output()
 
   # visualise
   if params["graphics"]:
     # fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
     v = visuals.Visual(2,3)
 
-    v.scatter((0,0), dataset.MIGRATIONS, gravity.impl.yhat, "b.", title="Gravity (unconstrained) fit: R^2=%.2f" % gravity.impl.pseudoR2)
-    v.scatter((0,1), dataset.MIGRATIONS, prod.impl.yhat, "k.", title="Production constrained fit: R^2=%.2f" % prod.impl.pseudoR2)
+    v.scatter((0,0), dataset.MIGRATIONS, gravity.impl.yhat, "b.", title="%d Gravity (unconstrained) fit: R^2=%.2f" % (year, gravity.impl.pseudoR2))
+
+    c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == "E07000008"]
+    v.line((0,1), c.YEAR, c.PEOPLE, "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (Cambridge)")
+    v.line((0,1), c.YEAR, c.PEOPLE + c.net_delta, "r", label="scenario")
+    #v.scatter((0,1), dataset.MIGRATIONS, prod.impl.yhat, "k.", title="Production constrained fit: R^2=%.2f" % prod.impl.pseudoR2)
     #v.scatter((0,2), dataset.MIGRATIONS, doubly.impl.yhat, "r.", "Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
 
     # TODO change in population...
