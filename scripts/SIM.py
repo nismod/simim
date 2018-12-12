@@ -92,8 +92,7 @@ def main(params):
 
   # loop over scenario years (up to 2039 due to Wales SNPP still being 2014-based)
   # TODO post-scenario years not working
-  for year in range(data.scenario_timeline()[0], data.scenario_timeline()[-1]+1):
-  #for year in range(data.scenario_timeline()[0], data.snpp.max_year("en") - 1):
+  for year in range(data.scenario_timeline()[0], data.snpp.max_year("en") - 1):
     # people
     #p_2011 = data.get_people(census_ew, census_sc, census_ni if do_NI else None)
     # int() workaround for ukpopulation#28
@@ -147,7 +146,7 @@ def main(params):
     if most_recent_scenario is None:
       raise ValueError("Unable to find a scenario for %s" % year)
     #print(most_recent_scenario.head())
-    dataset = dataset.merge(data.scenario[data.scenario.YEAR==year].drop("HOUSEHOLDS", axis=1), how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
+    dataset = dataset.merge(most_recent_scenario.drop("HOUSEHOLDS", axis=1), how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
       .drop(["GEOGRAPHY_CODE", "YEAR"], axis=1).fillna(0)
     dataset["CHANGED_HOUSEHOLDS"] = dataset.HOUSEHOLDS + dataset.CUM_HOUSEHOLDS
 
