@@ -4,11 +4,12 @@ data download functionality
 import os
 import requests
 import zipfile
-import geopandas as gpd
 import re
+import warnings
 
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 
 import ukcensusapi.Nomisweb as Nomisweb
 import ukcensusapi.NRScotland as NRScotland
@@ -94,6 +95,9 @@ class Instance():
 
   def get_households(self, year, geogs):
 
+    # see https://docs.python.org/3/library/warnings.html
+    warnings.warn("geogs argument to get_households is currently ignored")
+
     # households
     # get total household counts per LAD
     query_params = {
@@ -120,6 +124,28 @@ class Instance():
       
     households.rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1, inplace=True)
     return households
+
+  def get_jobs(self, year, geogs):
+
+    warnings.warn("geogs argument to get_jobs is currently ignored")
+
+    query_params = {
+      "date": "latest",
+      "item": "1",
+      "MEASURES": "20100",
+      "geography": "1879048193...1879048573,1879048583,1879048574...1879048582",
+      "select": "GEOGRAPHY_CODE,OBS_VALUE"
+    }
+    jobs = self.census_ew.get_data("NM_57_1", query_params)
+
+    # aggregate census-merged LADs 'E06000053' 'E09000001'
+    jobs.loc[jobs.GEOGRAPHY_CODE=="E09000033", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].OBS_VALUE.sum()
+    jobs.loc[jobs.GEOGRAPHY_CODE=="E06000052", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].OBS_VALUE.sum()
+    
+    jobs = jobs[~jobs.GEOGRAPHY_CODE.isin(['E06000053', 'E09000001', 'N09000001', 'N09000002', 'N09000003', 'N09000004', 'N09000005', 
+                                           'N09000006', 'N09000007', 'N09000008', 'N09000009', 'N09000010', 'N09000011'])] \
+      .rename({"OBS_VALUE": "JOBS"}, axis=1)
+    return jobs
 
   def get_shapefile(self, zip_url):
     local_zipfile = os.path.join(self.cache_dir, utils.md5hash(zip_url) + ".zip")

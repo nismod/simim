@@ -70,6 +70,8 @@ def main(params):
   #print(od_2011.head())
 
   # TODO 
+  # 26 LGDs -> 11 in 2014 with N09000... codes
+  # see https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=2ahUKEwiXzuiWu5rfAhURCxoKHYH1A9YQFjAAegQIBRAC&url=http%3A%2F%2Fwww.ninis2.nisra.gov.uk%2FDownload%2FPopulation%2FBirths%2520to%2520Mothers%2520from%2520Outside%2520Northern%2520Ireland%2520%25202013%2520Provisional%2520(administrative%2520geographies).xlsx&usg=AOvVaw3ZI3EDJAJxtsFQVRMEX37C
   if ukpoputils.NI not in data.coverage:
     ni = ['95TT', '95XX', '95OO', '95GG', '95DD', '95QQ', '95ZZ', '95VV', '95YY', '95CC',
           '95II', '95NN', '95AA', '95RR', '95MM', '95LL', '95FF', '95BB', '95SS', '95HH',
@@ -95,13 +97,17 @@ def main(params):
     # people
     snpp = data.get_people(year, geogs)
 
+    # TODO use projections
     snhp = data.get_households(year, geogs)
+
+    jobs = data.get_jobs(year, geogs)
 
     # Merge population *at origin*
     dataset = od_2011
     dataset = dataset.merge(snpp, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
-    # Merge households *at destination*
+    # Merge households & jobs *at destination*
     dataset = dataset.merge(snhp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
+    dataset = dataset.merge(jobs, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
 
     #print(odmatrix.shape)
     
@@ -114,7 +120,18 @@ def main(params):
 
     #print(dataset.head())
 
-    gravity = models.Model("gravity", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "HOUSEHOLDS", "DISTANCE")
+    gravity = models.Model("gravity", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", ["HOUSEHOLDS", "JOBS"], "DISTANCE")
+
+    g_manual = gravity(dataset.PEOPLE, [dataset.HOUSEHOLDS, dataset.JOBS])
+
+    pd.DataFrame({"Y": dataset.MIGRATIONS, 
+                  "P": dataset.PEOPLE, 
+                  "HH": dataset.HOUSEHOLDS, 
+                  "J": dataset.JOBS, 
+                  "G_YHAT": gravity.impl.yhat, 
+                  "G_MANUAL": g_manual}).to_csv("a2.csv", index=False)
+    print(gravity.dataset.head())
+    print(gravity.impl.params)
     #prod = models.Model("production", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
     # These models are too constrained - no way of perturbing the attractiveness
     # attr = models.Model("attraction", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
@@ -152,7 +169,7 @@ def main(params):
     #dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] + 10000 
     #dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] + 2000 
 
-    dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, dataset.CHANGED_HOUSEHOLDS.values)
+    dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, [dataset.CHANGED_HOUSEHOLDS.values, dataset.JOBS.values])
     # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
 
     changed_odmatrix = od_matrix(dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
@@ -171,6 +188,8 @@ def main(params):
     #print(snpp.head())
     data.append_output(snpp, year)
 
+    break
+
   print("writing custom SNPP variant data to %s" % data.output_file)
   data.write_output()
 
@@ -181,8 +200,9 @@ def main(params):
 
     v.scatter((0,0), dataset.MIGRATIONS, gravity.impl.yhat, "b.", title="%d Gravity (unconstrained) fit: R^2=%.2f" % (year, gravity.impl.pseudoR2))
 
-    lad = "E07000099"
+    # N.Herts = "E07000099"
     # Cambridge "E07000008"
+    lad = "E07000178" # Oxford
     c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == lad]
     v.line((0,1), c.YEAR, c.PEOPLE, "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (%s)" % lad)
     v.line((0,1), c.YEAR, c.PEOPLE + c.net_delta, "r", label="scenario")

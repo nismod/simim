@@ -48,6 +48,10 @@ class Model:
     self.xd_cols = xd_cols
     self.cost_col = cost_col
 
+    # slightly complicated to compute indices for mu and alpha from params
+    self.num_emit = 1 if np.isscalar(self.xo_cols) else len(self.xo_cols)
+    self.num_attr = 1 if np.isscalar(self.xd_cols) else len(self.xd_cols)
+
     if self.model_type == "gravity":
       self.impl = Gravity(self.dataset[self.y_col].values, 
                           self.dataset[self.xo_cols].values, 
@@ -76,19 +80,22 @@ class Model:
   def k(self):
     return self.impl.params[0]
 
-  def mu(self):
+  def mu(self, offset=0):
+    # TODO multiple emit/attr for prod/attr
     if self.model_type == "production":
       return self.impl.params[1:-2]
     elif self.model_type == "attraction":
       return self.impl.params[-2]
-    return self.impl.params[1]
+    return self.impl.params[1+offset]
 
-  def alpha(self):
+  def alpha(self, offset=0):
+    # TODO multiple emit/attr for prod/attr
     if self.model_type == "production":
       return self.impl.params[-2]
     elif self.model_type == "attraction":
       return self.impl.params[1:-2]
-    return self.impl.params[2]
+    print("alpha:", offset, self.num_attr, -1-self.num_attr+offset)
+    return self.impl.params[-1-self.num_attr+offset]
 
   def beta(self):
     return self.impl.params[-1]
@@ -97,10 +104,20 @@ class Model:
     if self.model_type == "gravity":
       assert xo is not None
       assert xd is not None
-      if self.model_subtype == "pow":
-        ybar = (np.exp(self.k()) * xo ** self.mu() * xd ** self.alpha() * self.dataset[self.cost_col] ** self.beta())
+      if isinstance(xd, list):
+        assert len(xd) == self.num_attr # doesnt work?
+        xd_alpha = xd[0] ** self.alpha(0)
+        for i in range(1,self.num_attr):
+          print(i)
+          xd_alpha = xd_alpha * xd[i] ** self.alpha(i)
       else:
-        ybar = (np.exp(self.k()) * xo ** self.mu() * xd ** self.alpha() * np.exp(self.dataset[self.cost_col] * self.beta()))
+        assert 1 == self.num_attr
+        xd_alpha = xd ** self.alpha()
+
+      if self.model_subtype == "pow":
+        ybar = (np.exp(self.k()) * xo ** self.mu() * xd_alpha * self.dataset[self.cost_col] ** self.beta())
+      else:
+        ybar = (np.exp(self.k()) * xo ** self.mu() * xd_alpha * np.exp(self.dataset[self.cost_col] * self.beta()))
       return ybar
     elif self.model_type == "production":
       #assert xo is None
@@ -133,7 +150,4 @@ class Model:
       return ybar
     else:
       raise NotImplementedError("TODO...")
-
-
-
 
