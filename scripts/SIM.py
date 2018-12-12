@@ -91,11 +91,8 @@ def main(params):
   most_recent_scenario = None
 
   # loop over scenario years (up to 2039 due to Wales SNPP still being 2014-based)
-  # TODO post-scenario years not working
   for year in range(data.scenario_timeline()[0], data.snpp.max_year("en") - 1):
     # people
-    #p_2011 = data.get_people(census_ew, census_sc, census_ni if do_NI else None)
-    # int() workaround for ukpopulation#28
     snpp = data.get_people(year, geogs)
 
     snhp = data.get_households(year, geogs)
@@ -142,6 +139,7 @@ def main(params):
     # if no scenario for a year, reuse the most recent (cumulative) figures
     if year in data.scenario.YEAR.unique():
       most_recent_scenario = data.scenario[data.scenario.YEAR==year]
+
     # ensure there is a scenario
     if most_recent_scenario is None:
       raise ValueError("Unable to find a scenario for %s" % year)
@@ -149,7 +147,7 @@ def main(params):
     dataset = dataset.merge(most_recent_scenario.drop("HOUSEHOLDS", axis=1), how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
       .drop(["GEOGRAPHY_CODE", "YEAR"], axis=1).fillna(0)
     dataset["CHANGED_HOUSEHOLDS"] = dataset.HOUSEHOLDS + dataset.CUM_HOUSEHOLDS
-
+    
     #dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] + 300000 
     #dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] + 10000 
     #dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] + 2000 
@@ -183,8 +181,10 @@ def main(params):
 
     v.scatter((0,0), dataset.MIGRATIONS, gravity.impl.yhat, "b.", title="%d Gravity (unconstrained) fit: R^2=%.2f" % (year, gravity.impl.pseudoR2))
 
-    c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == "E07000008"]
-    v.line((0,1), c.YEAR, c.PEOPLE, "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (Cambridge)")
+    lad = "E07000099"
+    # Cambridge "E07000008"
+    c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == lad]
+    v.line((0,1), c.YEAR, c.PEOPLE, "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (%s)" % lad)
     v.line((0,1), c.YEAR, c.PEOPLE + c.net_delta, "r", label="scenario")
     #v.scatter((0,1), dataset.MIGRATIONS, prod.impl.yhat, "k.", title="Production constrained fit: R^2=%.2f" % prod.impl.pseudoR2)
     #v.scatter((0,2), dataset.MIGRATIONS, doubly.impl.yhat, "r.", "Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
