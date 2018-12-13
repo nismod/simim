@@ -41,20 +41,13 @@ class Instance():
     self.npp = NPPData.NPPData(self.cache_dir) 
     # TODO households...
 
-    # scenario data
     self.baseline = params["base_projection"]
-    self.scenario = pd.read_csv(params["scenario"])
 
     if not os.path.isdir(params["output_dir"]):
       raise ValueError("Output directory %s not found" % params["output_dir"])
 
     self.output_file = os.path.join(params["output_dir"], "simim_" + params["base_projection"] + "_" + os.path.basename(params["scenario"]))
     self.custom_snpp_variant = pd.DataFrame()
-
-
-  def scenario_timeline(self):
-    # TODO ensure no gaps...fill in?
-    return sorted(self.scenario.YEAR.unique().astype(np.int32))
 
   def get_od(self):
 

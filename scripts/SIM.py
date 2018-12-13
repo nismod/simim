@@ -7,6 +7,7 @@ import geopandas
 import matplotlib.pyplot as plt
 import contextily as ctx
 import simim.data_apis as data_apis
+import simim.scenario as scenario
 import simim.models as models
 import simim.visuals as visuals
 
@@ -20,6 +21,7 @@ from simim.utils import calc_distances, od_matrix, get_config
 def main(params):
 
   data = data_apis.Instance(params)
+  scenario_data = scenario.Scenario(params["scenario"])
 
   if params["base_projection"] != "ppp":
     raise NotImplementedError("TODO variant projections...")
@@ -79,7 +81,7 @@ def main(params):
     od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isin(ni)) & (~od_2011.D_GEOGRAPHY_CODE.isin(ni))]
     odmatrix = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].set_index(["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]).unstack().values
 
-  timeline = data.scenario_timeline()
+  timeline = scenario_data.timeline()
 
   custom_variant = pd.DataFrame()
 
@@ -90,10 +92,8 @@ def main(params):
     data.append_output(snpp, year)
     print("pre-scenario %d" % year)
 
-  most_recent_scenario = None
-
   # loop over scenario years (up to 2039 due to Wales SNPP still being 2014-based)
-  for year in range(data.scenario_timeline()[0], data.snpp.max_year("en") - 1):
+  for year in range(scenario_data.timeline()[0], data.snpp.max_year("en") - 1):
     # people
     snpp = data.get_people(year, geogs)
 
@@ -113,32 +113,11 @@ def main(params):
     # dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")
     # break
 
-    #print(odmatrix.shape)
-    
-    # remove O=D rows and reset index
-    #dataset = dataset[dataset.O_GEOGRAPHY_CODE != dataset.D_GEOGRAPHY_CODE].reset_index(drop=True)
-    # miniSIM
-    #dataset = dataset[(dataset.O_GEOGRAPHY_CODE.isin(arclads)) & (dataset.D_GEOGRAPHY_CODE.isin(arclads))]
     odmatrix = od_matrix(dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
-
-    #print(dataset.head())
 
     gravity = models.Model("gravity", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", ["HOUSEHOLDS", "JOBS"], "DISTANCE")
 
     assert np.allclose(gravity.impl.yhat, gravity(dataset.PEOPLE, [dataset.HOUSEHOLDS, dataset.JOBS]))
-
-    # pd.DataFrame({"Y": dataset.MIGRATIONS, 
-    #               "P": dataset.PEOPLE, 
-    #               "HH": dataset.HOUSEHOLDS, 
-    #               "J": dataset.JOBS, 
-    #               "G_YHAT": gravity.impl.yhat, 
-    #               "G_MANUAL": g_manual}).to_csv("a2.csv", index=False)
-    # print(gravity.dataset.head())
-    # print(gravity.impl.params)
-    #prod = models.Model("production", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
-    # These models are too constrained - no way of perturbing the attractiveness
-    # attr = models.Model("attraction", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
-    # doubly = models.Model("doubly", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "DISTANCE")
 
     if params["model_type"] == "gravity":
       model = gravity
@@ -152,29 +131,22 @@ def main(params):
     # check.to_csv("./check.csv", index=None)
     # stop
 
-    print("scenario %d %s/%s Poisson fit R2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
+    print("%d data %s/%s Poisson fit R2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
 
     model_odmatrix = od_matrix(model.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
-    # if no scenario for a year, reuse the most recent (cumulative) figures
-    if year in data.scenario.YEAR.unique():
-      most_recent_scenario = data.scenario[data.scenario.YEAR==year]
-
-    # ensure there is a scenario
-    if most_recent_scenario is None:
-      raise ValueError("Unable to find a scenario for %s" % year)
-    #print(most_recent_scenario.head())
-    dataset = dataset.merge(most_recent_scenario.drop(["HOUSEHOLDS", "JOBS"], axis=1), how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
-      .drop(["GEOGRAPHY_CODE", "YEAR"], axis=1).fillna(0)
-    dataset["CHANGED_HOUSEHOLDS"] = dataset.HOUSEHOLDS + dataset.CUM_HOUSEHOLDS
-    dataset["CHANGED_JOBS"] = dataset.JOBS + dataset.CUM_JOBS
+    # apply scenario to dataset
+    dataset = scenario_data.apply(dataset, year)
     
+    # re-evaluate model and record changes
     dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, [dataset.CHANGED_HOUSEHOLDS.values, dataset.CHANGED_JOBS.values])
     # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
 
+    # construct new OD matrix
     changed_odmatrix = od_matrix(dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
     delta_odmatrix = changed_odmatrix - model_odmatrix
 
+    # compute migration inflows and outflow changes 
     delta = pd.DataFrame({"o_lad16cd": dataset.O_GEOGRAPHY_CODE, 
                           "d_lad16cd": dataset.D_GEOGRAPHY_CODE, 
                           "delta": -dataset.CHANGED_MIGRATIONS + model.dataset.MODEL_MIGRATIONS})
@@ -182,8 +154,10 @@ def main(params):
     o_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
     d_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
     delta = o_delta.merge(d_delta)
+    # compute net migration change
     delta["net_delta"] = delta.o_delta - delta.d_delta
 
+    # add to results
     snpp = snpp.merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
     #print(snpp.head())
     data.append_output(snpp, year)
