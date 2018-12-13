@@ -86,6 +86,7 @@ class Model:
       return self.impl.params[1:-2]
     elif self.model_type == "attraction":
       return self.impl.params[-2]
+    #print(self.impl.params[1+offset])
     return self.impl.params[1+offset]
 
   def alpha(self, offset=0):
@@ -94,30 +95,44 @@ class Model:
       return self.impl.params[-2]
     elif self.model_type == "attraction":
       return self.impl.params[1:-2]
-    print("alpha:", offset, self.num_attr, -1-self.num_attr+offset)
     return self.impl.params[-1-self.num_attr+offset]
 
   def beta(self):
     return self.impl.params[-1]
 
+  def __calc_xo_mu(self, xo):
+    if isinstance(xo, list):
+      assert len(xo) == self.num_emit 
+      xo_mu = xo[0] ** self.mu(0)
+      for i in range(1,self.num_emit):
+        xo_mu = xo_mu * xo[i] ** self.mu(i)
+    else:
+      assert 1 == self.num_emit
+      xo_mu = xo ** self.mu()
+    return xo_mu
+
+  def __calc_xd_alpha(self, xd):
+    if isinstance(xd, list):
+      assert len(xd) == self.num_attr 
+      xd_alpha = xd[0] ** self.alpha(0)
+      for i in range(1,self.num_attr):
+        xd_alpha = xd_alpha * xd[i] ** self.alpha(i)
+    else:
+      assert 1 == self.num_attr
+      xd_alpha = xd ** self.alpha()
+    return xd_alpha
+
   def __call__(self, xo=None, xd=None):
     if self.model_type == "gravity":
       assert xo is not None
       assert xd is not None
-      if isinstance(xd, list):
-        assert len(xd) == self.num_attr # doesnt work?
-        xd_alpha = xd[0] ** self.alpha(0)
-        for i in range(1,self.num_attr):
-          print(i)
-          xd_alpha = xd_alpha * xd[i] ** self.alpha(i)
-      else:
-        assert 1 == self.num_attr
-        xd_alpha = xd ** self.alpha()
+      xo_mu = self.__calc_xo_mu(xo)
+      xd_alpha = self.__calc_xd_alpha(xd)
 
       if self.model_subtype == "pow":
-        ybar = (np.exp(self.k()) * xo ** self.mu() * xd_alpha * self.dataset[self.cost_col] ** self.beta())
+        ybar = (np.exp(self.k()) * xo_mu * xd_alpha * self.dataset[self.cost_col] ** self.beta())
       else:
-        ybar = (np.exp(self.k()) * xo ** self.mu() * xd_alpha * np.exp(self.dataset[self.cost_col] * self.beta()))
+        ybar = (np.exp(self.k()) * xo_mu * xd_alpha * np.exp(self.dataset[self.cost_col] * self.beta()))
       return ybar
     elif self.model_type == "production":
       #assert xo is None

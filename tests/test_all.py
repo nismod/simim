@@ -18,8 +18,8 @@ import simim.models as models
 class Test(TestCase):
   """ Test harness """
 
-  # GB dataset of population, households and inter-LAD distances
-  dataset = pd.read_csv("tests/data/test2011.csv.gz")
+  # GB dataset of population, households, jobs and inter-LAD distances
+  dataset = pd.read_csv("tests/data/testdata.csv.gz")
 
   def test_stats(self):
     np.random.seed(0)
@@ -42,15 +42,27 @@ class Test(TestCase):
 
 
   def test_dataset(self):
-    self.assertTrue(len(Test.dataset) == 378*377)
+    self.assertTrue(len(Test.dataset) == 378*378)
 
   def test_gravity(self):
+    # single factor prod and attr
     for model_subtype in ["pow", "exp"]:
       gravity = models.Model("gravity", model_subtype, Test.dataset, "MIGRATIONS", "PEOPLE", "HOUSEHOLDS", "DISTANCE")
-      self.assertTrue(rmse(gravity(Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values), gravity.impl.yhat) < 1e-13)
+      self.assertTrue(rmse(gravity(Test.dataset.PEOPLE.values, Test.dataset.HOUSEHOLDS.values), gravity.impl.yhat) < 1e-10)
       Test.dataset["HH_CHANGED"] = Test.dataset.HOUSEHOLDS
       Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HH_CHANGED"] = Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 
       self.assertTrue(rmse(gravity(Test.dataset.PEOPLE.values, Test.dataset.HH_CHANGED.values), gravity.impl.yhat) > 1.0)
+
+  def test_gravity2(self):
+    # multi factor emission
+    for model_subtype in ["pow", "exp"]:
+      gravity = models.Model("gravity", model_subtype, Test.dataset, "MIGRATIONS", "PEOPLE", ["HOUSEHOLDS", "JOBS"], "DISTANCE")
+      self.assertTrue(rmse(gravity(Test.dataset.PEOPLE.values, [Test.dataset.HOUSEHOLDS.values, Test.dataset.JOBS.values]), gravity.impl.yhat) < 1e-10)
+    # multi factor attraction
+    for model_subtype in ["pow", "exp"]:
+      gravity = models.Model("gravity", model_subtype, Test.dataset, "MIGRATIONS", ["PEOPLE", "JOBS"], "HOUSEHOLDS", "DISTANCE")
+      print(gravity.impl.params)
+      self.assertTrue(rmse(gravity([Test.dataset.PEOPLE.values, Test.dataset.JOBS.values], Test.dataset.HOUSEHOLDS.values), gravity.impl.yhat) < 1e-10)
 
 if __name__ == "__main__":
   unittest.main()

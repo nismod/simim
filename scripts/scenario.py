@@ -21,14 +21,22 @@ def main(params):
   for year in years:
     scenario = scenario.append(pd.DataFrame({"GEOGRAPHY_CODE": camkox, "YEAR": year, "HOUSEHOLDS": hh_per_year_per_lad}), ignore_index=True)
 
+  jobs_per_year_per_ctr = 25000 # 225000 total 
+  # or perhaps just in the centres?
+  scenario["JOBS"] = 0
+  scenario.loc[scenario.GEOGRAPHY_CODE.isin(ctrlads), "JOBS"] = jobs_per_year_per_ctr
+
   # identify by LAD
   scenario.HOUSEHOLDS = scenario.HOUSEHOLDS + pd.to_numeric(scenario.GEOGRAPHY_CODE.str[-3:])
 
   scenario["CUM_HOUSEHOLDS"] = None 
+  scenario["CUM_JOBS"] = None 
   for g in scenario.GEOGRAPHY_CODE.unique():
     for year in scenario.YEAR.unique():
       scenario.loc[(scenario.GEOGRAPHY_CODE==g) & (scenario.YEAR==year), "CUM_HOUSEHOLDS"] = \
         scenario[(scenario.GEOGRAPHY_CODE==g) & (scenario.YEAR <= year)].HOUSEHOLDS.sum()
+      scenario.loc[(scenario.GEOGRAPHY_CODE==g) & (scenario.YEAR==year), "CUM_JOBS"] = \
+        scenario[(scenario.GEOGRAPHY_CODE==g) & (scenario.YEAR <= year)].JOBS.sum()
 
   # or https://stackoverflow.com/questions/53707418/running-sums-from-one-column-conditional-on-values-in-another-column/53707484#53707484
   #scenario = scenario.sort_values(['GEOGRAPHY_CODE','YEAR']).reset_index(drop=True)

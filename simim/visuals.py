@@ -45,9 +45,9 @@ class Visual:
     ax.yaxis.set_visible(False)
 
   def polygons(self, panel, gdf, title=None, xlim=None, ylim=None, **kwargs):
-    #ax = self.axes[panel]
     ax = self.panel(panel)
-    ax.axis("off")
+    ax.set_xticks([])
+    ax.set_yticks([])
     if title:
       ax.set_title(title)
     if xlim:

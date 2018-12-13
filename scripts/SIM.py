@@ -109,29 +109,32 @@ def main(params):
     dataset = dataset.merge(snhp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
     dataset = dataset.merge(jobs, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
 
+    # save dataset for testing
+    # dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")
+    # break
+
     #print(odmatrix.shape)
     
     # remove O=D rows and reset index
     #dataset = dataset[dataset.O_GEOGRAPHY_CODE != dataset.D_GEOGRAPHY_CODE].reset_index(drop=True)
     # miniSIM
     #dataset = dataset[(dataset.O_GEOGRAPHY_CODE.isin(arclads)) & (dataset.D_GEOGRAPHY_CODE.isin(arclads))]
-
     odmatrix = od_matrix(dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
     #print(dataset.head())
 
     gravity = models.Model("gravity", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", ["HOUSEHOLDS", "JOBS"], "DISTANCE")
 
-    g_manual = gravity(dataset.PEOPLE, [dataset.HOUSEHOLDS, dataset.JOBS])
+    assert np.allclose(gravity.impl.yhat, gravity(dataset.PEOPLE, [dataset.HOUSEHOLDS, dataset.JOBS]))
 
-    pd.DataFrame({"Y": dataset.MIGRATIONS, 
-                  "P": dataset.PEOPLE, 
-                  "HH": dataset.HOUSEHOLDS, 
-                  "J": dataset.JOBS, 
-                  "G_YHAT": gravity.impl.yhat, 
-                  "G_MANUAL": g_manual}).to_csv("a2.csv", index=False)
-    print(gravity.dataset.head())
-    print(gravity.impl.params)
+    # pd.DataFrame({"Y": dataset.MIGRATIONS, 
+    #               "P": dataset.PEOPLE, 
+    #               "HH": dataset.HOUSEHOLDS, 
+    #               "J": dataset.JOBS, 
+    #               "G_YHAT": gravity.impl.yhat, 
+    #               "G_MANUAL": g_manual}).to_csv("a2.csv", index=False)
+    # print(gravity.dataset.head())
+    # print(gravity.impl.params)
     #prod = models.Model("production", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
     # These models are too constrained - no way of perturbing the attractiveness
     # attr = models.Model("attraction", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
@@ -161,15 +164,12 @@ def main(params):
     if most_recent_scenario is None:
       raise ValueError("Unable to find a scenario for %s" % year)
     #print(most_recent_scenario.head())
-    dataset = dataset.merge(most_recent_scenario.drop("HOUSEHOLDS", axis=1), how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
+    dataset = dataset.merge(most_recent_scenario.drop(["HOUSEHOLDS", "JOBS"], axis=1), how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
       .drop(["GEOGRAPHY_CODE", "YEAR"], axis=1).fillna(0)
     dataset["CHANGED_HOUSEHOLDS"] = dataset.HOUSEHOLDS + dataset.CUM_HOUSEHOLDS
+    dataset["CHANGED_JOBS"] = dataset.JOBS + dataset.CUM_JOBS
     
-    #dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE == "E07000178", "CHANGED_HOUSEHOLDS"] + 300000 
-    #dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "CHANGED_HOUSEHOLDS"] + 10000 
-    #dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] = dataset.loc[dataset.D_GEOGRAPHY_CODE.isin(camkox), "CHANGED_HOUSEHOLDS"] + 2000 
-
-    dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, [dataset.CHANGED_HOUSEHOLDS.values, dataset.JOBS.values])
+    dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, [dataset.CHANGED_HOUSEHOLDS.values, dataset.CHANGED_JOBS.values])
     # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
 
     changed_odmatrix = od_matrix(dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
@@ -188,7 +188,7 @@ def main(params):
     #print(snpp.head())
     data.append_output(snpp, year)
 
-    break
+    #break
 
   print("writing custom SNPP variant data to %s" % data.output_file)
   data.write_output()
