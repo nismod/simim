@@ -13,6 +13,13 @@ def md5hash(string):
   m.update(string.encode('utf-8'))
   return m.hexdigest()
 
+def get_named_values(dataset, colnames, prefix=""):
+  """ Returns a list of Series from dataset, optionally prefixed when modified original values are needed"""
+  if not isinstance(colnames, list):
+    return dataset[prefix+colnames]
+  else:
+    return [dataset[prefix+colname] for colname in colnames]
+
 def get_data(local, remote):
   if os.path.isfile(local):
     data = pd.read_csv(local)

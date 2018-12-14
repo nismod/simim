@@ -13,7 +13,7 @@ import simim.visuals as visuals
 
 import ukpopulation.utils as ukpoputils
 
-from simim.utils import calc_distances, od_matrix, get_config
+from simim.utils import get_named_values, calc_distances, od_matrix, get_config
 
 # ctrlads = ["E07000178", "E06000042", "E07000008"]
 # arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
@@ -85,6 +85,9 @@ def main(params):
 
   custom_variant = pd.DataFrame()
 
+  # ensure base dataset is sorted so that the mu/alphas for the constrained models are interpreted correctly
+  od_2011.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"], inplace=True)
+
   # loop from snpp start to scenario start
   for year in range(data.snpp.min_year("en"), timeline[0]):
     snpp = data.get_people(year, geogs)
@@ -115,21 +118,21 @@ def main(params):
 
     odmatrix = od_matrix(dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
 
-    gravity = models.Model("gravity", params["model_subtype"], dataset, "MIGRATIONS", "PEOPLE", ["HOUSEHOLDS", "JOBS"], "DISTANCE")
+    model = models.Model(params["model_type"], 
+                         params["model_subtype"], 
+                         dataset, 
+                         params["observation"], 
+                         params["emitters"],
+                         params["attractors"], 
+                         params["cost"])
+    #prod = models.Model("production", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
 
-    assert np.allclose(gravity.impl.yhat, gravity(dataset.PEOPLE, [dataset.HOUSEHOLDS, dataset.JOBS]))
+    emitter_values = get_named_values(dataset, params["emitters"])
+    attractor_values = get_named_values(dataset, params["attractors"])
 
-    if params["model_type"] == "gravity":
-      model = gravity
-    # elif params["model_type"] == "production":
-    #   model = prod
+    assert np.allclose(model.impl.yhat, model(emitter_values, attractor_values))
 
-    # print(prod.impl.params)
-    # print(attr.impl.params)
-    # check = pd.DataFrame({"P_YHAT": prod.impl.yhat, "P_MANUAL": prod(xd=dataset.HOUSEHOLDS.values), "P_MU": prod.dataset.mu,
-    #                       "A_YHAT": attr.impl.yhat, "A_MANUAL": attr(xo=dataset.PEOPLE.values), "A_ALPHA": attr.dataset.alpha})
-    # check.to_csv("./check.csv", index=None)
-    # stop
+    #assert np.allclose(prod.impl.yhat, prod(xd=dataset.HOUSEHOLDS))
 
     print("%d data %s/%s Poisson fit R2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
 
@@ -138,8 +141,11 @@ def main(params):
     # apply scenario to dataset
     dataset = scenario_data.apply(dataset, year)
     
+    changed_attractor_values = get_named_values(dataset, params["attractors"], prefix="CHANGED_")
+
+    # TODO generalise...
     # re-evaluate model and record changes
-    dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, [dataset.CHANGED_HOUSEHOLDS.values, dataset.CHANGED_JOBS.values])
+    dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, changed_attractor_values)
     # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
 
     # construct new OD matrix
@@ -172,7 +178,8 @@ def main(params):
     # fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
     v = visuals.Visual(2,3)
 
-    v.scatter((0,0), dataset.MIGRATIONS, gravity.impl.yhat, "b.", title="%d Gravity (unconstrained) fit: R^2=%.2f" % (year, gravity.impl.pseudoR2))
+    v.scatter((0,0), dataset.MIGRATIONS, model.impl.yhat, "b.", title="%d %s migration model fit: R^2=%.2f" \
+      % (year, params["model_type"], model.impl.pseudoR2))
 
     # N.Herts = "E07000099"
     # Cambridge "E07000008"
@@ -180,8 +187,6 @@ def main(params):
     c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == lad]
     v.line((0,1), c.YEAR, c.PEOPLE, "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (%s)" % lad)
     v.line((0,1), c.YEAR, c.PEOPLE + c.net_delta, "r", label="scenario")
-    #v.scatter((0,1), dataset.MIGRATIONS, prod.impl.yhat, "k.", title="Production constrained fit: R^2=%.2f" % prod.impl.pseudoR2)
-    #v.scatter((0,2), dataset.MIGRATIONS, doubly.impl.yhat, "r.", "Doubly constrained fit: R^2=%.2f" % doubly.impl.pseudoR2)
 
     # TODO change in population...
     # v.polygons((0,2), gdf, xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="lightgrey")
@@ -190,7 +195,7 @@ def main(params):
     gdf = gdf.merge(delta)
     # net emigration in blue
     net_out = gdf[gdf.net_delta < 0.0]
-    v.polygons((0,2), net_out, title="Gravity migration model implied impact on population", xlim=[120000, 670000], ylim=[0, 550000], 
+    v.polygons((0,2), net_out, title="%s migration model implied impact on population" % params["model_type"], xlim=[120000, 670000], ylim=[0, 550000], 
       values=-net_out.net_delta, clim=(0, np.max(-net_out.net_delta)), cmap="Blues", edgecolor="darkgrey", linewidth=0.25)
     # net immigration in red
     net_in = gdf[gdf.net_delta >= 0.0] 
@@ -200,9 +205,9 @@ def main(params):
     #print(gdf[gdf.net_delta >= 0.0])
 
     v.matrix((1,0), np.log(odmatrix+1), cmap="Greens", title="Actual OD matrix (displaced log scale)")
-    v.matrix((1,1), np.log(model_odmatrix+1), cmap="Greys", title="Gravity model OD matrix (displaced log scale)")
+    v.matrix((1,1), np.log(model_odmatrix+1), cmap="Greys", title="%s model OD matrix (displaced log scale)" % params["model_type"])
     # we get away with log here as no values are -ve
-    v.matrix((1,2), np.log(1+delta_odmatrix), cmap="Oranges", title="Gravity model perturbed OD matrix delta")
+    v.matrix((1,2), np.log(1+delta_odmatrix), cmap="Oranges", title="%s model perturbed OD matrix delta" % params["model_type"])
     #absmax = max(np.max(delta_od),-np.min(delta_od))
     #v.matrix((1,2), delta_od, 'RdBu', title="Gravity model perturbed OD matrix delta", clim=(-absmax/50,absmax/50))
 

@@ -10,7 +10,7 @@ from pysal.contrib.spint.gravity import Doubly
 _valid_types = ["gravity", "production", "attraction", "doubly"]
 _valid_subtypes = ["pow", "exp"]
 
-def validate(model_type, model_subtype, dataset):
+def validate(model_type, model_subtype, dataset, y_col, xo_cols, xd_cols, cost_col):
   if not model_type in _valid_types:
     raise ValueError("invalid model type % (must be one of %s)" % (model_subtype, str(_valid_types)))
   if not model_subtype in _valid_subtypes:
@@ -19,13 +19,17 @@ def validate(model_type, model_subtype, dataset):
     raise ValueError("dataset must contain an O_GEOGRAPHY_CODE column for origin identifiers")
   if not "D_GEOGRAPHY_CODE" in dataset.columns.values:
     raise ValueError("dataset must contain an D_GEOGRAPHY_CODE column for destination identifiers")
-
+  if not y_col in dataset.columns.values:
+    raise ValueError("observation column specified to be %s but it's not in the dataset" % y_col)
+  # TODO validate xo/xd cols...
+  if not cost_col in dataset.columns.values:
+    raise ValueError("cost function column specified to be %s but it's not in the dataset" % cost_col)
 
 class Model:
   def __init__(self, model_type, model_subtype, dataset, y_col, xo_cols, xd_cols, cost_col):
     self.model_type = model_type
     self.model_subtype = model_subtype
-    validate(self.model_type, self.model_subtype, dataset)
+    validate(self.model_type, self.model_subtype, dataset, y_col, xo_cols, xd_cols, cost_col)
 
     self.dataset = dataset.copy()
     # TODO needs more thought...

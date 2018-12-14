@@ -1,7 +1,11 @@
 {
   "coverage": "GB",
-  "model_type": "gravity",
+  "model_type": "production",
   "model_subtype": "pow",
+  "observation": "MIGRATIONS",
+  "emitters": "O_GEOGRAPHY_CODE",
+  "attractors": "HOUSEHOLDS",
+  "cost": "DISTANCE",
   "base_projection": "ppp",
   "scenario": "./scenario1.csv",
   "cache_dir": "../microsimulation/cache",

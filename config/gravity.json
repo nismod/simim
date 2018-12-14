@@ -1,0 +1,14 @@
+{
+  "coverage": "GB",
+  "model_type": "gravity",
+  "model_subtype": "pow",
+  "observation": "MIGRATIONS",
+  "emitters": "PEOPLE",
+  "attractors": ["HOUSEHOLDS", "JOBS"],
+  "cost": "DISTANCE",
+  "base_projection": "ppp",
+  "scenario": "./scenario1.csv",
+  "cache_dir": "../microsimulation/cache",
+  "output_dir": "./data",
+  "graphics": true
+}
