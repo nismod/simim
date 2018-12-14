@@ -19,7 +19,7 @@ class Test(TestCase):
   """ Test harness """
 
   # GB dataset of population, households, jobs and inter-LAD distances
-  dataset = pd.read_csv("tests/data/testdata.csv.gz")
+  dataset = pd.read_csv("tests/data/testdata.csv.gz").sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"])
 
   def test_stats(self):
     np.random.seed(0)
@@ -39,7 +39,6 @@ class Test(TestCase):
     self.assertEqual(rmse(x,z), np.sqrt(np.mean(x*x)))
     self.assertEqual(rmse(x,x), 0.0)
     self.assertEqual(rmse(x,-x), np.sqrt(np.mean(4*x*x)))
-
 
   def test_dataset(self):
     self.assertTrue(len(Test.dataset) == 378*378)
@@ -63,6 +62,24 @@ class Test(TestCase):
       gravity = models.Model("gravity", model_subtype, Test.dataset, "MIGRATIONS", ["PEOPLE", "JOBS"], "HOUSEHOLDS", "DISTANCE")
       print(gravity.impl.params)
       self.assertTrue(rmse(gravity([Test.dataset.PEOPLE.values, Test.dataset.JOBS.values], Test.dataset.HOUSEHOLDS.values), gravity.impl.yhat) < 1e-10)
+
+  def test_production(self):
+    # single factor attr
+    for model_subtype in ["pow", "exp"]:
+      production = models.Model("production", model_subtype, Test.dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
+      self.assertTrue(rmse(production(xd=Test.dataset.HOUSEHOLDS.values), production.impl.yhat) < 1e-10)
+      Test.dataset["HH_CHANGED"] = Test.dataset.HOUSEHOLDS
+      Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HH_CHANGED"] = Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 
+      self.assertTrue(rmse(production(xd=Test.dataset.HH_CHANGED.values), production.impl.yhat) > 1.0)
+
+  def test_attraction(self):
+    # single factor prod
+    for model_subtype in ["pow", "exp"]:
+      attraction = models.Model("attraction", model_subtype, Test.dataset, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
+      self.assertTrue(rmse(attraction(xo=Test.dataset.PEOPLE.values), attraction.impl.yhat) < 1e-10)
+      Test.dataset["P_CHANGED"] = Test.dataset.PEOPLE
+      Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "P_CHANGED"] = Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 
+      self.assertTrue(rmse(attraction(xo=Test.dataset.P_CHANGED.values), attraction.impl.yhat) > 1.0)
 
 if __name__ == "__main__":
   unittest.main()
