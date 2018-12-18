@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+
+""" run script for Spatial Interaction Model of Internal Migration """
+
+import time
+import numpy as np
+from simim import simim
+import simim.utils as utils
+import simim.visuals as visuals
+
+def main(params):
+  """ Run it """
+  try:
+    # print some info...
+
+    # start timing
+    start_time = time.time()
+
+    # TODO sort this mess 
+    dataset, model, data, gdf, delta, odmatrix, model_odmatrix, delta_odmatrix = simim.simim(params)
+
+    print("done. Exec time(s): ", time.time() - start_time)
+
+  except RuntimeError as error: 
+    print("RUN FAILED: ", error)
+    return
+
+  print("writing custom SNPP variant data to %s" % data.output_file)
+  data.write_output()
+
+  # visualise
+  year = data.snpp.max_year("en") - 1
+  if params["graphics"]:
+    # fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
+    v = visuals.Visual(2,3)
+
+    v.scatter((0,0), dataset.MIGRATIONS, model.impl.yhat, "b.", title="%d %s migration model fit: R^2=%.2f" \
+      % (year, params["model_type"], model.impl.pseudoR2))
+    v.line((0,0), [0,max(dataset.MIGRATIONS)], [0,max(dataset.MIGRATIONS)], "k", linewidth=0.25)
+
+    # N.Herts = "E07000099"
+    # Cambridge "E07000008"
+    lad = "E07000178" # Oxford
+    c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == lad]
+    v.line((0,1), c.YEAR, c.PEOPLE, "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (%s)" % lad)
+    v.line((0,1), c.YEAR, c.PEOPLE + c.net_delta, "r", label="scenario")
+
+    # TODO change in population...
+    # v.polygons((0,2), gdf, xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="lightgrey")
+    # v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="orange")
+    # v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="red")
+    gdf = gdf.merge(delta)
+    # net emigration in blue
+    net_out = gdf[gdf.net_delta < 0.0]
+    v.polygons((0,2), net_out, title="%s migration model implied impact on population" % params["model_type"], xlim=[120000, 670000], ylim=[0, 550000], 
+      values=-net_out.net_delta, clim=(0, np.max(-net_out.net_delta)), cmap="Blues", edgecolor="darkgrey", linewidth=0.25)
+    # net immigration in red
+    net_in = gdf[gdf.net_delta >= 0.0] 
+    v.polygons((0,2), net_in, xlim=[120000, 670000], ylim=[0, 550000], 
+      values=net_in.net_delta, clim=(0, np.max(net_in.net_delta)), cmap="Reds", edgecolor="darkgrey", linewidth=0.25)
+
+    #print(gdf[gdf.net_delta >= 0.0])
+
+    v.matrix((1,0), np.log(odmatrix+1), cmap="Greens", title="Actual OD matrix (displaced log scale)")
+    v.matrix((1,1), np.log(model_odmatrix+1), cmap="Greys", title="%s model OD matrix (displaced log scale)" % params["model_type"])
+    # we get away with log here as no values are -ve
+    v.matrix((1,2), np.log(1+delta_odmatrix), cmap="Oranges", title="%s model perturbed OD matrix delta" % params["model_type"])
+    #absmax = max(np.max(delta_od),-np.min(delta_od))
+    #v.matrix((1,2), delta_od, 'RdBu', title="Gravity model perturbed OD matrix delta", clim=(-absmax/50,absmax/50))
+
+    v.show()
+    #v.to_png("doc/img/sim_basic.png")
+
+
+if __name__ == "__main__":
+
+  params = utils.get_config()
+  main(params)
+
