@@ -84,11 +84,11 @@ class Model:
 
   # The params array structure, based on N emissiveness factors and M attractiveness factors:
   #
-  #   0 1 ... M-1 M ... N-1 N ... N+M-1 N+M 
-  # G k m ...  m  m ...  m  a ...   a    b
-  # P k m ...  m  m ...  m  a ...   a    b
-  # A k a ...  a  m ...  m  m       m    b
-  # D k m ...  m  m ...  m  a ...   a    b
+  #   0 1 ... M M+1 ... N N+1 ... N+M+1 N+M+2 
+  # G k m ... m  m ...  m  a ...    a     b
+  # P k m ... m  m ...  m  a ...    a     b
+  # A k a ... a  m ...  m  m ...    m     b
+  # D k m ... m  m ...  m  a ...    a     b
   #
   # for production/doubly, N is unique origins - 1
   # for attraction/doubly, M is unique dests - 1
@@ -112,31 +112,25 @@ class Model:
     return self.impl.params[-1]
 
   def __calc_xo_mu(self, xo):
-    # TODO easier to force xo into a list...
+    if not isinstance(xo, list):
+      xo = [xo]
     mu = self.mu()
     assert len(mu) == self.num_emit
-    if isinstance(xo, list):
-      assert len(xo) == self.num_emit 
-      xo_mu = xo[0] ** mu[0]
-      for i in range(1,self.num_emit):
-        xo_mu = xo_mu * xo[i] ** mu[i]
-    else:
-      assert 1 == self.num_emit
-      xo_mu = xo ** mu[0]
+    assert len(xo) == self.num_emit 
+    xo_mu = xo[0] ** mu[0]
+    for i in range(1,self.num_emit):
+      xo_mu = xo_mu * xo[i] ** mu[i]
     return xo_mu
 
   def __calc_xd_alpha(self, xd):
-    # TODO easier to force xd into a list...
+    if not isinstance(xd, list):
+      xd = [xd]
     alpha = self.alpha()
     assert len(alpha) == self.num_attr
-    if isinstance(xd, list):
-      assert len(xd) == self.num_attr 
-      xd_alpha = xd[0] ** alpha[0]
-      for i in range(1,self.num_attr):
-        xd_alpha = xd_alpha * xd[i] ** alpha[i]
-    else:
-      assert 1 == self.num_attr
-      xd_alpha = xd ** alpha[0]
+    assert len(xd) == self.num_attr 
+    xd_alpha = xd[0] ** alpha[0]
+    for i in range(1,self.num_attr):
+      xd_alpha = xd_alpha * xd[i] ** alpha[i]
     return xd_alpha
 
   def __call__(self, xo=None, xd=None):
