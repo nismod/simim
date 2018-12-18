@@ -47,23 +47,32 @@ class Model:
     # slightly complicated to compute indices for mu and alpha from params
     self.num_emit = 1 if np.isscalar(self.xo_cols) else len(self.xo_cols)
     self.num_attr = 1 if np.isscalar(self.xd_cols) else len(self.xd_cols)
-
+    # for constrained models the above values need to be changed to num of unique O or D less 1
+  
     if self.model_type == "gravity":
       self.impl = Gravity(self.dataset[self.y_col].values, 
                           self.dataset[self.xo_cols].values, 
                           self.dataset[self.xd_cols].values, 
                           self.dataset[self.cost_col].values, self.model_subtype)
     elif self.model_type == "production":
+      assert(self.num_emit == 1)
+      self.num_emit = len(self.dataset[self.xo_cols].unique()) - 1
       self.impl = Production(self.dataset[self.y_col].values, 
                              self.dataset[self.xo_cols].values, 
                              self.dataset[self.xd_cols].values, 
                              self.dataset[self.cost_col].values, self.model_subtype)
     elif self.model_type == "attraction":
+      assert(self.num_attr == 1)
+      self.num_attr = len(self.dataset[self.xd_cols].unique()) - 1
       self.impl = Attraction(self.dataset[self.y_col].values, 
                              self.dataset[self.xd_cols].values, 
                              self.dataset[self.xo_cols].values, 
                              self.dataset[self.cost_col].values, self.model_subtype)
     else: #model_type == "doubly":
+      assert(self.num_emit == 1)
+      self.num_emit = len(self.dataset[self.xo_cols].unique()) - 1
+      assert(self.num_attr == 1)
+      self.num_attr = len(self.dataset[self.xd_cols].unique()) - 1
       raise NotImplemented("Doubly constrained model is too constrained")
       self.impl = Doubly(self.dataset[self.y_col].values, 
                          self.dataset[self.xo_cols].values, 
@@ -73,50 +82,61 @@ class Model:
     # append the model-fitted flows to the dataframe, prefixed with "MODEL_"
     self.dataset["MODEL_"+self.y_col] = self.impl.yhat
 
-  # TODO generalise...
+  # The params array structure, based on N emissiveness factors and M attractiveness factors:
+  #
+  #   0 1 ... M-1 M ... N-1 N ... N+M-1 N+M 
+  # G k m ...  m  m ...  m  a ...   a    b
+  # P k m ...  m  m ...  m  a ...   a    b
+  # A k a ...  a  m ...  m  m       m    b
+  # D k m ...  m  m ...  m  a ...   a    b
+  #
+  # for production/doubly, N is unique origins - 1
+  # for attraction/doubly, M is unique dests - 1
+
   def k(self):
     return self.impl.params[0]
 
-  def mu(self, offset=0):
-    # TODO multiple emit/attr for prod/attr
-    if self.model_type == "production":
-      return self.impl.params[1:-2]
-    elif self.model_type == "attraction":
-      return self.impl.params[-2]
-    #print(self.impl.params[1+offset])
-    return self.impl.params[1+offset]
+  def mu(self):
+    if self.model_type == "attraction":
+      return self.impl.params[1+self.num_attr:1+self.num_attr+self.num_emit]
+    else:
+      return self.impl.params[1:self.num_emit+1]
 
-  def alpha(self, offset=0):
-    # TODO multiple emit/attr for prod/attr
-    if self.model_type == "production":
-      return self.impl.params[-2]
-    elif self.model_type == "attraction":
-      return self.impl.params[1:-2]
-    return self.impl.params[-1-self.num_attr+offset]
+  def alpha(self):
+    if self.model_type == "attraction":
+      return self.impl.params[1:self.num_attr+1]
+    else:
+      return self.impl.params[1+self.num_emit:1+self.num_emit+self.num_attr]
 
   def beta(self):
     return self.impl.params[-1]
 
   def __calc_xo_mu(self, xo):
+    # TODO easier to force xo into a list...
+    mu = self.mu()
+    assert len(mu) == self.num_emit
     if isinstance(xo, list):
       assert len(xo) == self.num_emit 
-      xo_mu = xo[0] ** self.mu(0)
+      xo_mu = xo[0] ** mu[0]
       for i in range(1,self.num_emit):
-        xo_mu = xo_mu * xo[i] ** self.mu(i)
+        xo_mu = xo_mu * xo[i] ** mu[i]
     else:
       assert 1 == self.num_emit
-      xo_mu = xo ** self.mu()
+      xo_mu = xo ** mu[0]
     return xo_mu
 
   def __calc_xd_alpha(self, xd):
+    # TODO easier to force xd into a list...
+    alpha = self.alpha()
+    assert len(alpha) == self.num_attr
     if isinstance(xd, list):
       assert len(xd) == self.num_attr 
-      xd_alpha = xd[0] ** self.alpha(0)
+      xd_alpha = xd[0] ** alpha[0]
       for i in range(1,self.num_attr):
-        xd_alpha = xd_alpha * xd[i] ** self.alpha(i)
+        xd_alpha = xd_alpha * xd[i] ** alpha[i]
     else:
       assert 1 == self.num_attr
-      xd_alpha = xd ** self.alpha()
+      xd_alpha = xd ** alpha[0]
     return xd_alpha
 
   def __call__(self, xo=None, xd=None):
