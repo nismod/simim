@@ -180,6 +180,7 @@ def main(params):
 
     v.scatter((0,0), dataset.MIGRATIONS, model.impl.yhat, "b.", title="%d %s migration model fit: R^2=%.2f" \
       % (year, params["model_type"], model.impl.pseudoR2))
+    v.line((0,0), [0,max(dataset.MIGRATIONS)], [0,max(dataset.MIGRATIONS)], "k", linewidth=0.25)
 
     # N.Herts = "E07000099"
     # Cambridge "E07000008"

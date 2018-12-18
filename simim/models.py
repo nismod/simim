@@ -154,26 +154,28 @@ class Model:
     elif self.model_type == "production":
       #assert xo is None
       assert xd is not None
+      xd_alpha = self.__calc_xd_alpha(xd)
       mu = np.append(0, self.mu())
       mu = np.tile(mu, int(len(self.dataset)/len(mu)))
       assert len(mu) == len(self.dataset)
       # NB ordering is only guaranteed if dataset is sorted by origin then destination code
       if self.model_subtype == "pow":
-        ybar = (np.exp(self.k()) * np.exp(mu) * xd ** self.alpha() * self.dataset[self.cost_col] ** self.beta())
+        ybar = (np.exp(self.k()) * np.exp(mu) * xd_alpha * self.dataset[self.cost_col] ** self.beta())
       else:
-        ybar = (np.exp(self.k()) * np.exp(mu) * xd ** self.alpha() * np.exp(self.dataset[self.cost_col] * self.beta()))
+        ybar = (np.exp(self.k()) * np.exp(mu) * xd_alpha * np.exp(self.dataset[self.cost_col] * self.beta()))
       return ybar
     elif self.model_type == "attraction":
       assert xo is not None
       #assert xd is None
+      xo_mu = self.__calc_xo_mu(xo)
       alpha = np.append(0,self.alpha())
       alpha = np.repeat(alpha, int(len(self.dataset)/len(alpha)))
       assert len(alpha) == len(self.dataset)
       # NB ordering is only guaranteed if dataset is sorted by origin then destination code
       if self.model_subtype == "pow":
-        ybar = (np.exp(self.k()) * xo ** self.mu() * np.exp(alpha) * self.dataset[self.cost_col] ** self.beta())
+        ybar = (np.exp(self.k()) * xo_mu * np.exp(alpha) * self.dataset[self.cost_col] ** self.beta())
       else:
-        ybar = (np.exp(self.k()) * xo ** self.mu() * np.exp(alpha) * np.exp(self.dataset[self.cost_col] * self.beta()))
+        ybar = (np.exp(self.k()) * xo_mu * np.exp(alpha) * np.exp(self.dataset[self.cost_col] * self.beta()))
       return ybar
     else:
       raise NotImplementedError("%s evaluation not implemented" % self.model_type)

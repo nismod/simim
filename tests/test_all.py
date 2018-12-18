@@ -61,14 +61,47 @@ class Test(TestCase):
     self.assertTrue(np.allclose(g.impl.params[-3:-1], g.alpha()))
     self.assertEqual(g.impl.params[-1], g.beta())
 
+    g = models.Model("gravity", "pow", Test.dataset, "MIGRATIONS", ["PEOPLE", "JOBS"], "HOUSEHOLDS", "DISTANCE")
+    self.assertEqual(g.num_emit, 2)
+    self.assertEqual(g.num_attr, 1)
+    self.assertEqual(g.impl.params[0], g.k())
+    self.assertTrue(np.allclose(g.impl.params[1:3], g.mu()))
+    self.assertEqual(g.impl.params[-2:-1], g.alpha())
+    self.assertEqual(g.impl.params[-1], g.beta())
+
     p = models.Model("production", "pow", Test.dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
-    print(p.impl.params)
     self.assertEqual(p.num_emit, 377)
     self.assertEqual(p.num_attr, 1)
     self.assertEqual(p.impl.params[0], p.k())
     self.assertTrue(np.allclose(p.impl.params[1:378], p.mu()))
     self.assertEqual(p.impl.params[-2:-1], p.alpha())
     self.assertEqual(p.impl.params[-1], p.beta())
+
+    p = models.Model("production", "pow", Test.dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", ["HOUSEHOLDS", "JOBS"], "DISTANCE")
+    self.assertEqual(p.num_emit, 377)
+    self.assertEqual(p.num_attr, 2)
+    self.assertEqual(p.impl.params[0], p.k())
+    self.assertTrue(np.allclose(p.impl.params[1:378], p.mu()))
+    self.assertTrue(np.allclose(p.impl.params[-3:-1], p.alpha()))
+    self.assertEqual(p.impl.params[-1], p.beta())
+
+    a = models.Model("attraction", "pow", Test.dataset, "MIGRATIONS", "PEOPLE", "D_GEOGRAPHY_CODE", "DISTANCE")
+    self.assertEqual(a.num_emit, 1)
+    self.assertEqual(a.num_attr, 377)
+    self.assertEqual(a.impl.params[0], a.k())
+    self.assertTrue(np.allclose(a.impl.params[-2:-1], a.mu()))
+    self.assertTrue(np.allclose(a.impl.params[1:378], a.alpha()))
+    self.assertEqual(a.impl.params[-1], a.beta())
+
+    # model doesnt converge
+    # a = models.Model("attraction", "pow", Test.dataset, "MIGRATIONS", ["PEOPLE", "JOBS"], "D_GEOGRAPHY_CODE", "DISTANCE")
+    # print(a.impl.params)
+    # self.assertEqual(a.num_emit, 2)
+    # self.assertEqual(a.num_attr, 377)
+    # self.assertEqual(a.impl.params[0], a.k())
+    # self.assertTrue(np.allclose(a.impl.params[-3:-1], a.mu()))
+    # self.assertTrue(np.allclose(a.impl.params[1:378], a.alpha()))
+    # self.assertEqual(a.impl.params[-1], a.beta())
 
 
   def test_gravity(self):
@@ -100,16 +133,16 @@ class Test(TestCase):
       Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HH_CHANGED"] = Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 
       self.assertTrue(rmse(production(xd=Test.dataset.HH_CHANGED.values), production.impl.yhat) > 1.0)
 
-  # def test_production2(self):
-  #   # single factor attr
-  #   for model_subtype in ["pow", "exp"]:
-  #     production = models.Model("production", model_subtype, Test.dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", ["HOUSEHOLDS", "JOBS"], "DISTANCE")
-  #     self.assertTrue(rmse(production(xd=[Test.dataset.HOUSEHOLDS.values, Test.dataset.JOBS.values]), production.impl.yhat) < 1e-10)
-  #     Test.dataset["HH_CHANGED"] = Test.dataset.HOUSEHOLDS
-  #     Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HH_CHANGED"] = Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 
-  #     Test.dataset["J_CHANGED"] = Test.dataset.JOBS
-  #     Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "J_CHANGED"] = Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "JOBS"] + 300000 
-  #     self.assertTrue(rmse(production(xd=Test.dataset.HH_CHANGED.values), production.impl.yhat) > 1.0)
+  def test_production2(self):
+    # single factor attr
+    for model_subtype in ["pow", "exp"]:
+      production = models.Model("production", model_subtype, Test.dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", ["HOUSEHOLDS", "JOBS"], "DISTANCE")
+      self.assertTrue(rmse(production(xd=[Test.dataset.HOUSEHOLDS.values, Test.dataset.JOBS.values]), production.impl.yhat) < 1e-10)
+      Test.dataset["HH_CHANGED"] = Test.dataset.HOUSEHOLDS
+      Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HH_CHANGED"] = Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "HOUSEHOLDS"] + 300000 
+      Test.dataset["J_CHANGED"] = Test.dataset.JOBS
+      Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "J_CHANGED"] = Test.dataset.loc[Test.dataset.D_GEOGRAPHY_CODE == "E07000178", "JOBS"] + 300000 
+      self.assertTrue(rmse(production(xd=[Test.dataset.HH_CHANGED.values, Test.dataset.HH_CHANGED.values]), production.impl.yhat) > 1.0)
 
   def test_attraction(self):
     # single factor prod
