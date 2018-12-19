@@ -5,8 +5,8 @@
 import time
 import numpy as np
 from simim import simim
-import simim.utils as utils
 import simim.visuals as visuals
+from simim.utils import od_matrix, get_config
 
 def main(params):
   """ Run it """
@@ -17,7 +17,7 @@ def main(params):
     start_time = time.time()
 
     # TODO sort this mess 
-    dataset, model, data, gdf, delta, odmatrix, model_odmatrix, delta_odmatrix = simim.simim(params)
+    model, data, delta = simim.simim(params)
 
     print("done. Exec time(s): ", time.time() - start_time)
 
@@ -34,9 +34,9 @@ def main(params):
     # fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
     v = visuals.Visual(2,3)
 
-    v.scatter((0,0), dataset.MIGRATIONS, model.impl.yhat, "b.", title="%d %s migration model fit: R^2=%.2f" \
+    v.scatter((0,0), model.dataset.MIGRATIONS, model.impl.yhat, "b.", title="%d %s migration model fit: R^2=%.2f" \
       % (year, params["model_type"], model.impl.pseudoR2))
-    v.line((0,0), [0,max(dataset.MIGRATIONS)], [0,max(dataset.MIGRATIONS)], "k", linewidth=0.25)
+    v.line((0,0), [0,max(model.dataset.MIGRATIONS)], [0,max(model.dataset.MIGRATIONS)], "k", linewidth=0.25)
 
     # N.Herts = "E07000099"
     # Cambridge "E07000008"
@@ -49,7 +49,7 @@ def main(params):
     # v.polygons((0,2), gdf, xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="lightgrey")
     # v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="orange")
     # v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="red")
-    gdf = gdf.merge(delta)
+    gdf = data.get_shapefile().merge(delta)
     # net emigration in blue
     net_out = gdf[gdf.net_delta < 0.0]
     v.polygons((0,2), net_out, title="%s migration model implied impact on population" % params["model_type"], xlim=[120000, 670000], ylim=[0, 550000], 
@@ -59,10 +59,13 @@ def main(params):
     v.polygons((0,2), net_in, xlim=[120000, 670000], ylim=[0, 550000], 
       values=net_in.net_delta, clim=(0, np.max(net_in.net_delta)), cmap="Reds", edgecolor="darkgrey", linewidth=0.25)
 
-    #print(gdf[gdf.net_delta >= 0.0])
-
+    odmatrix = od_matrix(model.dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
     v.matrix((1,0), np.log(odmatrix+1), cmap="Greens", title="Actual OD matrix (displaced log scale)")
+    model_odmatrix = od_matrix(model.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
     v.matrix((1,1), np.log(model_odmatrix+1), cmap="Greys", title="%s model OD matrix (displaced log scale)" % params["model_type"])
+    # construct new OD matrix
+    changed_odmatrix = od_matrix(model.dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
+    delta_odmatrix = changed_odmatrix - model_odmatrix
     # we get away with log here as no values are -ve
     v.matrix((1,2), np.log(1+delta_odmatrix), cmap="Oranges", title="%s model perturbed OD matrix delta" % params["model_type"])
     #absmax = max(np.max(delta_od),-np.min(delta_od))
@@ -74,6 +77,6 @@ def main(params):
 
 if __name__ == "__main__":
 
-  params = utils.get_config()
+  params = get_config()
   main(params)
 

@@ -49,6 +49,9 @@ class Instance():
     self.output_file = os.path.join(params["output_dir"], "simim_" + params["base_projection"] + "_" + os.path.basename(params["scenario"]))
     self.custom_snpp_variant = pd.DataFrame()
 
+    # holder for shapefile when requested
+    self.shapefile = None
+
   def get_od(self):
 
     # get OD data
@@ -140,27 +143,35 @@ class Instance():
       .rename({"OBS_VALUE": "JOBS"}, axis=1)
     return jobs
 
-  def get_shapefile(self, zip_url):
-    local_zipfile = os.path.join(self.cache_dir, utils.md5hash(zip_url) + ".zip")
-    if not os.path.isfile(local_zipfile):
-      response = requests.get(zip_url)
-      response.raise_for_status()
-      with open(local_zipfile, 'wb') as fd:
-        for chunk in response.iter_content(chunk_size=1024):
-          fd.write(chunk)
-      print("downloaded OK")
-    else: 
-      print("using cached data: %s" % local_zipfile)
-    
-    zip = zipfile.ZipFile(local_zipfile)
-    #print(zip.namelist())
-    # find a shapefile in the zip...
-    regex = re.compile(".*\.shp$")
-    f = filter(regex.match, zip.namelist())
-    shapefile = str(next(f))
-    # can't find a way of reading this directly into geopandas
-    zip.extractall(path=self.cache_dir)
-    return gpd.read_file(os.path.join(self.cache_dir, shapefile))
+  def get_shapefile(self, zip_url=None):
+    """ 
+    Gets and stores a shapefile from the given URL 
+    same shapefile can be subsequently retrieved by calling this function without the zip_url arg
+    Fails if no url is supplied and none has previously been specified
+    """
+    assert self.shapefile is not None or zip_url is not None
+    if zip_url is not None:
+      local_zipfile = os.path.join(self.cache_dir, utils.md5hash(zip_url) + ".zip")
+      if not os.path.isfile(local_zipfile):
+        response = requests.get(zip_url)
+        response.raise_for_status()
+        with open(local_zipfile, 'wb') as fd:
+          for chunk in response.iter_content(chunk_size=1024):
+            fd.write(chunk)
+        print("downloaded OK")
+      else: 
+        print("using cached data: %s" % local_zipfile)
+      
+      zip = zipfile.ZipFile(local_zipfile)
+      #print(zip.namelist())
+      # find a shapefile in the zip...
+      regex = re.compile(".*\.shp$")
+      f = filter(regex.match, zip.namelist())
+      shapefile = str(next(f))
+      # can't find a way of reading this directly into geopandas
+      zip.extractall(path=self.cache_dir)
+      self.shapefile = gpd.read_file(os.path.join(self.cache_dir, shapefile))
+    return self.shapefile
 
   def get_lad_lookup(self):
 

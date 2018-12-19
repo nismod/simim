@@ -12,20 +12,20 @@ import simim.models as models
 
 import ukpopulation.utils as ukpoputils
 
-from simim.utils import get_named_values, calc_distances, od_matrix, get_config
+from simim.utils import get_named_values, calc_distances
 
 # ctrlads = ["E07000178", "E06000042", "E07000008"]
 # arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
 
 def simim(params):
 
-  data = data_apis.Instance(params)
+  input_data = data_apis.Instance(params)
   scenario_data = scenario.Scenario(params["scenario"])
 
   if params["base_projection"] != "ppp":
     raise NotImplementedError("TODO variant projections...")
 
-  od_2011 = data.get_od()
+  od_2011 = input_data.get_od()
 
   # # CMLAD codes...
   # print("E06000048" in od_2011.USUAL_RESIDENCE_CODE.unique())
@@ -33,7 +33,7 @@ def simim(params):
   # # TODO convert OD to non-CM LAD (more up to date migration data uses LAD)
   # TODO need to remap old NI codes 95.. to N... ones
 
-  lad_lookup = data.get_lad_lookup() #pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
+  lad_lookup = input_data.get_lad_lookup() #pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
 
   # TODO need to remap old NI codes 95.. to N... ones
 
@@ -60,9 +60,8 @@ def simim(params):
 
   # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
-  gdf = data.get_shapefile(url)
 
-  dists = calc_distances(gdf)
+  dists = calc_distances(input_data.get_shapefile(url))
   # merge with OD
   od_2011 = od_2011.merge(dists, how="left", left_on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"], right_on=["orig", "dest"]).drop(["orig", "dest"], axis=1)
 
@@ -73,36 +72,35 @@ def simim(params):
   # TODO 
   # 26 LGDs -> 11 in 2014 with N09000... codes
   # see https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=2ahUKEwiXzuiWu5rfAhURCxoKHYH1A9YQFjAAegQIBRAC&url=http%3A%2F%2Fwww.ninis2.nisra.gov.uk%2FDownload%2FPopulation%2FBirths%2520to%2520Mothers%2520from%2520Outside%2520Northern%2520Ireland%2520%25202013%2520Provisional%2520(administrative%2520geographies).xlsx&usg=AOvVaw3ZI3EDJAJxtsFQVRMEX37C
-  if ukpoputils.NI not in data.coverage:
+  if ukpoputils.NI not in input_data.coverage:
     ni = ['95TT', '95XX', '95OO', '95GG', '95DD', '95QQ', '95ZZ', '95VV', '95YY', '95CC',
           '95II', '95NN', '95AA', '95RR', '95MM', '95LL', '95FF', '95BB', '95SS', '95HH',
           '95EE', '95PP', '95UU', '95WW', '95KK', '95JJ']
     od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isin(ni)) & (~od_2011.D_GEOGRAPHY_CODE.isin(ni))]
-    odmatrix = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].set_index(["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]).unstack().values
 
   timeline = scenario_data.timeline()
 
   custom_variant = pd.DataFrame()
 
-  # ensure base dataset is sorted so that the mu/alphas for the constrained models are interpreted correctly
-  od_2011.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"], inplace=True)
+  # # ensure base dataset is sorted so that the mu/alphas for the constrained models are interpreted correctly
+  # od_2011.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"], inplace=True)
 
   # loop from snpp start to scenario start
-  for year in range(data.snpp.min_year("en"), timeline[0]):
-    snpp = data.get_people(year, geogs)
+  for year in range(input_data.snpp.min_year("en"), timeline[0]):
+    snpp = input_data.get_people(year, geogs)
     snpp["net_delta"] = 0
-    data.append_output(snpp, year)
+    input_data.append_output(snpp, year)
     print("pre-scenario %d" % year)
 
   # loop over scenario years (up to 2039 due to Wales SNPP still being 2014-based)
-  for year in range(scenario_data.timeline()[0], data.snpp.max_year("en") - 1):
+  for year in range(scenario_data.timeline()[0], input_data.snpp.max_year("en") - 1):
     # people
-    snpp = data.get_people(year, geogs)
+    snpp = input_data.get_people(year, geogs)
 
     # TODO use projections
-    snhp = data.get_households(year, geogs)
+    snhp = input_data.get_households(year, geogs)
 
-    jobs = data.get_jobs(year, geogs)
+    jobs = input_data.get_jobs(year, geogs)
 
     # Merge population *at origin*
     dataset = od_2011
@@ -115,8 +113,6 @@ def simim(params):
     # dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")
     # break
 
-    odmatrix = od_matrix(dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
-
     model = models.Model(params["model_type"], 
                          params["model_subtype"], 
                          dataset, 
@@ -124,37 +120,30 @@ def simim(params):
                          params["emitters"],
                          params["attractors"], 
                          params["cost"])
-    #prod = models.Model("production", params["model_subtype"], dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "HOUSEHOLDS", "DISTANCE")
+    # dataset is now sunk into model, do not access directly
+    dataset = None
+    assert dataset is None
 
-    emitter_values = get_named_values(dataset, params["emitters"])
-    attractor_values = get_named_values(dataset, params["attractors"])
-
+    emitter_values = get_named_values(model.dataset, params["emitters"])
+    attractor_values = get_named_values(model.dataset, params["attractors"])
+    # check recalculation matches the fitted values
     assert np.allclose(model.impl.yhat, model(emitter_values, attractor_values))
-
-    #assert np.allclose(prod.impl.yhat, prod(xd=dataset.HOUSEHOLDS))
 
     print("%d data %s/%s Poisson fit R2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
 
-    model_odmatrix = od_matrix(model.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
-
     # apply scenario to dataset
-    dataset = scenario_data.apply(dataset, year)
+    model.dataset = scenario_data.apply(model.dataset, year)
     
-    changed_attractor_values = get_named_values(dataset, params["attractors"], prefix="CHANGED_")
+    changed_attractor_values = get_named_values(model.dataset, params["attractors"], prefix="CHANGED_")
 
-    # TODO generalise...
     # re-evaluate model and record changes
-    dataset["CHANGED_MIGRATIONS"] = model(dataset.PEOPLE.values, changed_attractor_values)
+    model.dataset["CHANGED_MIGRATIONS"] = model(model.dataset.PEOPLE.values, changed_attractor_values)
     # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
 
-    # construct new OD matrix
-    changed_odmatrix = od_matrix(dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
-    delta_odmatrix = changed_odmatrix - model_odmatrix
-
     # compute migration inflows and outflow changes 
-    delta = pd.DataFrame({"o_lad16cd": dataset.O_GEOGRAPHY_CODE, 
-                          "d_lad16cd": dataset.D_GEOGRAPHY_CODE, 
-                          "delta": -dataset.CHANGED_MIGRATIONS + model.dataset.MODEL_MIGRATIONS})
+    delta = pd.DataFrame({"o_lad16cd": model.dataset.O_GEOGRAPHY_CODE, 
+                          "d_lad16cd": model.dataset.D_GEOGRAPHY_CODE, 
+                          "delta": -model.dataset.CHANGED_MIGRATIONS + model.dataset.MODEL_MIGRATIONS})
     # remove in-LAD migrations and sun
     o_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
     d_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
@@ -165,8 +154,8 @@ def simim(params):
     # add to results
     snpp = snpp.merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
     #print(snpp.head())
-    data.append_output(snpp, year)
+    input_data.append_output(snpp, year)
 
     #break
 
-  return dataset, model, data, gdf, delta, odmatrix, model_odmatrix, delta_odmatrix
+  return model, input_data, delta

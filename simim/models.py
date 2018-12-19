@@ -31,13 +31,11 @@ class Model:
     self.model_subtype = model_subtype
     validate(self.model_type, self.model_subtype, dataset, y_col, xo_cols, xd_cols, cost_col)
 
-    self.dataset = dataset.copy()
-    # TODO needs more thought...
     # take a copy of the input dataset and ensure sorted by D then O
     # so that the ordering of mu, alpha is determined
-    #self.dataset = dataset.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"])
-    # now we have copy, invalidate the input!!!
-    #dataset = None
+    self.dataset = dataset.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"])#.reset_index()
+    # now we have copy, invalidate the input to avoid errors cause by mixing !!!
+    dataset = None
 
     self.y_col = y_col
     self.xo_cols = xo_cols
