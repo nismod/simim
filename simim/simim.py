@@ -92,12 +92,21 @@ def simim(params):
     input_data.append_output(snpp, year)
     print("pre-scenario %d" % year)
 
+  model = None
   # loop over scenario years (up to 2039 due to Wales SNPP still being 2014-based)
   for year in range(scenario_data.timeline()[0], input_data.snpp.max_year("en") - 1):
     # people
-    snpp = input_data.get_people(year, geogs)
 
-    # TODO use projections
+    # newsnpp = input_data.get_people(year, geogs)
+    # print(newsnpp.head())
+
+    snpp = input_data.get_people(year, geogs).merge(snpp, on="GEOGRAPHY_CODE", suffixes=("_raw", "_prev"))
+    snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) * (snpp.PEOPLE_raw / snpp.PEOPLE_prev)
+    snpp.drop(["PEOPLE_raw", "PEOPLE_prev", "net_delta", "YEAR"], axis=1, inplace=True)
+    #print(snpp.head())
+
+    # TODO use projections...
+    # TODO and adjust for previous changes from scenario
     snhp = input_data.get_households(year, geogs)
 
     jobs = input_data.get_jobs(year, geogs)
@@ -120,9 +129,8 @@ def simim(params):
                          params["emitters"],
                          params["attractors"], 
                          params["cost"])
-    # dataset is now sunk into model, do not access directly
-    dataset = None
-    assert dataset is None
+    # dataset is now sunk into model, prevent accidental access by deleting the original
+    del dataset
 
     emitter_values = get_named_values(model.dataset, params["emitters"])
     attractor_values = get_named_values(model.dataset, params["attractors"])
@@ -153,7 +161,6 @@ def simim(params):
 
     # add to results
     snpp = snpp.merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
-    #print(snpp.head())
     input_data.append_output(snpp, year)
 
     #break

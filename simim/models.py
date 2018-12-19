@@ -12,9 +12,9 @@ _valid_subtypes = ["pow", "exp"]
 
 def validate(model_type, model_subtype, dataset, y_col, xo_cols, xd_cols, cost_col):
   if not model_type in _valid_types:
-    raise ValueError("invalid model type % (must be one of %s)" % (model_subtype, str(_valid_types)))
+    raise ValueError("invalid model type %s (must be one of %s)" % (model_subtype, str(_valid_types)))
   if not model_subtype in _valid_subtypes:
-    raise ValueError("invalid model subtype % (must be one of %s)" % (model_subtype, str(_valid_subtypes)))
+    raise ValueError("invalid model subtype %s (must be one of %s)" % (model_subtype, str(_valid_subtypes)))
   if not "O_GEOGRAPHY_CODE" in dataset.columns.values:
     raise ValueError("dataset must contain an O_GEOGRAPHY_CODE column for origin identifiers")
   if not "D_GEOGRAPHY_CODE" in dataset.columns.values:
@@ -34,8 +34,6 @@ class Model:
     # take a copy of the input dataset and ensure sorted by D then O
     # so that the ordering of mu, alpha is determined
     self.dataset = dataset.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"])#.reset_index()
-    # now we have copy, invalidate the input to avoid errors cause by mixing !!!
-    dataset = None
 
     self.y_col = y_col
     self.xo_cols = xo_cols
@@ -71,7 +69,7 @@ class Model:
       self.num_emit = len(self.dataset[self.xo_cols].unique()) - 1
       assert(self.num_attr == 1)
       self.num_attr = len(self.dataset[self.xd_cols].unique()) - 1
-      raise NotImplemented("Doubly constrained model is too constrained")
+      raise NotImplementedError("Doubly constrained model is too constrained")
       self.impl = Doubly(self.dataset[self.y_col].values, 
                          self.dataset[self.xo_cols].values, 
                          self.dataset[self.xd_cols].values, 
