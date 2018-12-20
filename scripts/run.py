@@ -42,7 +42,7 @@ def main(params):
     # Cambridge "E07000008"
     lad = "E07000178" # Oxford
     c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == lad]
-    v.line((0,1), c.YEAR, c.PEOPLE, "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (%s)" % lad)
+    v.line((0,1), c.YEAR, c["PEOPLE_" + params["base_projection"]], "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (%s)" % lad)
     v.line((0,1), c.YEAR, c.PEOPLE + c.net_delta, "r", label="scenario")
 
     # TODO change in population...

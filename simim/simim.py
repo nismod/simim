@@ -88,6 +88,8 @@ def simim(params):
   # loop from snpp start to scenario start
   for year in range(input_data.snpp.min_year("en"), timeline[0]):
     snpp = input_data.get_people(year, geogs)
+    # pre-secenario the custom variant is same as the base projection
+    snpp["PEOPLE_" + params["base_projection"]] = snpp.PEOPLE
     snpp["net_delta"] = 0
     input_data.append_output(snpp, year)
     print("pre-scenario %d" % year)
@@ -100,10 +102,12 @@ def simim(params):
     # newsnpp = input_data.get_people(year, geogs)
     # print(newsnpp.head())
 
-    snpp = input_data.get_people(year, geogs).merge(snpp, on="GEOGRAPHY_CODE", suffixes=("_raw", "_prev"))
-    snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) * (snpp.PEOPLE_raw / snpp.PEOPLE_prev)
-    snpp.drop(["PEOPLE_raw", "PEOPLE_prev", "net_delta", "YEAR"], axis=1, inplace=True)
-    #print(snpp.head())
+    # drop the baseline for the previous year if present (it interferes with the merge)
+    if "PEOPLE_" + params["base_projection"] in snpp:
+      snpp.drop("PEOPLE_" + params["base_projection"], axis=1, inplace=True)
+    snpp = input_data.get_people(year, geogs).merge(snpp, on="GEOGRAPHY_CODE", suffixes=("_" + params["base_projection"], "_prev"))
+    snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) * (snpp["PEOPLE_" + params["base_projection"]] / snpp.PEOPLE_prev)
+    snpp.drop(["PEOPLE_prev", "net_delta", "YEAR"], axis=1, inplace=True)
 
     # TODO use projections...
     # TODO and adjust for previous changes from scenario
