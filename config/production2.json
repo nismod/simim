@@ -7,8 +7,9 @@
   "attractors": ["HOUSEHOLDS", "JOBS"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
-  "scenario": "./scenario1.csv",
+  "scenario_dir": "./data/scenarios",
+  "scenario": "scenario1.csv",
   "cache_dir": "../microsimulation/cache",
-  "output_dir": "./data",
+  "output_dir": "./data/output",
   "graphics": true
 }

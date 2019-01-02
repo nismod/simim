@@ -4,11 +4,11 @@
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
   "emitters": "O_GEOGRAPHY_CODE",
-  "attractors": "HOUSEHOLDS",
+  "attractors": ["HOUSEHOLDS", "JOBS", "GVA"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
   "scenario_dir": "./data/scenarios",
-  "scenario": "scenario1.csv",
+  "scenario": "scenario2.csv",
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data/output",
   "graphics": true

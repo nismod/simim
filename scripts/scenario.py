@@ -26,6 +26,11 @@ def main(params):
   scenario["JOBS"] = 0
   scenario.loc[scenario.GEOGRAPHY_CODE.isin(ctrlads), "JOBS"] = jobs_per_year_per_ctr
 
+  gva_per_year_per_ctr = 200 # £M
+  scenario["GVA"] = 0
+  scenario.loc[scenario.GEOGRAPHY_CODE.isin(ctrlads), "GVA"] = gva_per_year_per_ctr
+  scenario.loc[scenario.GEOGRAPHY_CODE.isin(arclads), "GVA"] = gva_per_year_per_ctr / 4
+
   # identify by LAD
   scenario.HOUSEHOLDS = scenario.HOUSEHOLDS + pd.to_numeric(scenario.GEOGRAPHY_CODE.str[-3:])
 
@@ -37,13 +42,15 @@ def main(params):
         scenario[(scenario.GEOGRAPHY_CODE==g) & (scenario.YEAR <= year)].HOUSEHOLDS.sum()
       scenario.loc[(scenario.GEOGRAPHY_CODE==g) & (scenario.YEAR==year), "CUM_JOBS"] = \
         scenario[(scenario.GEOGRAPHY_CODE==g) & (scenario.YEAR <= year)].JOBS.sum()
+      scenario.loc[(scenario.GEOGRAPHY_CODE==g) & (scenario.YEAR==year), "CUM_GVA"] = \
+        scenario[(scenario.GEOGRAPHY_CODE==g) & (scenario.YEAR <= year)].GVA.sum()
 
   # or https://stackoverflow.com/questions/53707418/running-sums-from-one-column-conditional-on-values-in-another-column/53707484#53707484
   #scenario = scenario.sort_values(['GEOGRAPHY_CODE','YEAR']).reset_index(drop=True)
   #scenario['CUM_HOUSEHOLDS'] = scenario.groupby('GEOGRAPHY_CODE').agg({'HOUSEHOLDS':'cumsum'})
 
   print(scenario)
-  scenario.to_csv("./scenario1.csv", index=False)
+  scenario.to_csv("./scenario2.csv", index=False)
 
 if __name__ == "__main__":
 

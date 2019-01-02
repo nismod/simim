@@ -46,7 +46,7 @@ class Instance():
     if not os.path.isdir(params["output_dir"]):
       raise ValueError("Output directory %s not found" % params["output_dir"])
 
-    self.output_file = os.path.join(params["output_dir"], "simim_" + params["base_projection"] + "_" + os.path.basename(params["scenario"]))
+    self.output_file = os.path.join(params["output_dir"], "simim_%s_%s_%s" % (params["model_type"], params["base_projection"], os.path.basename(params["scenario"])))
     self.custom_snpp_variant = pd.DataFrame()
 
     # holder for shapefile when requested
@@ -142,6 +142,16 @@ class Instance():
                                            'N09000006', 'N09000007', 'N09000008', 'N09000009', 'N09000010', 'N09000011'])] \
       .rename({"OBS_VALUE": "JOBS"}, axis=1)
     return jobs
+
+  # temporarily loading from csv pending response from nomisweb
+  def get_gva(self, year, geogs):
+    gva_all = pd.read_csv("./data/ons_gva1997-2015.csv")
+    if year > 2015:
+      print("using latest available (2015) GVA data")
+      year = 2015
+
+    # filter LADs and specific year
+    return gva_all[gva_all.GEOGRAPHY_CODE.isin(geogs)][["GEOGRAPHY_CODE", str(year)]].rename({str(year): "GVA"}, axis=1)
 
   def get_shapefile(self, zip_url=None):
     """ 

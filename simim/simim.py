@@ -20,7 +20,8 @@ from simim.utils import get_named_values, calc_distances
 def simim(params):
 
   input_data = data_apis.Instance(params)
-  scenario_data = scenario.Scenario(params["scenario"])
+  scenario_data = scenario.Scenario(os.path.join(params["scenario_dir"], params["scenario"]), params["attractors"])
+  
 
   if params["base_projection"] != "ppp":
     raise NotImplementedError("TODO variant projections...")
@@ -80,8 +81,6 @@ def simim(params):
 
   timeline = scenario_data.timeline()
 
-  custom_variant = pd.DataFrame()
-
   # # ensure base dataset is sorted so that the mu/alphas for the constrained models are interpreted correctly
   # od_2011.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"], inplace=True)
 
@@ -115,12 +114,15 @@ def simim(params):
 
     jobs = input_data.get_jobs(year, geogs)
 
+    gva = input_data.get_gva(year, geogs)
+
     # Merge population *at origin*
     dataset = od_2011
     dataset = dataset.merge(snpp, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
     # Merge households & jobs *at destination*
     dataset = dataset.merge(snhp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
     dataset = dataset.merge(jobs, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
+    dataset = dataset.merge(gva, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
 
     # save dataset for testing
     # dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")

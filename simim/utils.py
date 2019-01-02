@@ -20,6 +20,8 @@ def get_named_values(dataset, colnames, prefix=""):
   else:
     return [dataset[prefix+colname] for colname in colnames]
 
+
+
 def get_data(local, remote):
   if os.path.isfile(local):
     data = pd.read_csv(local)

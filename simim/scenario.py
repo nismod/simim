@@ -6,8 +6,16 @@ Manages scenarios
 import pandas as pd
 
 class Scenario():
-  def __init__(self, filename):
+  def __init__(self, filename, attractors):
     self.data = pd.read_csv(filename)
+    if isinstance(attractors, str):
+      attractors = [attractors]
+    missing = [attractor for attractor in attractors if attractor not in self.data.columns]
+
+    for col in missing:
+      print("attractor %s not present in scenario data" % col)
+      self.data[col] = 0
+      self.data["CUM_"+col] = 0
 
     # validate
     if "GEOGRAPHY_CODE" not in self.data.columns.values:
