@@ -2,6 +2,7 @@
 
 """ run script for Spatial Interaction Model of Internal Migration """
 
+import os
 import time
 import numpy as np
 from simim import simim
@@ -12,6 +13,9 @@ def main(params):
   """ Run it """
   try:
     # print some info...
+    if not os.path.isdir(params["output_dir"]):
+      print("Creating output directory %s" % params["output_dir"])
+      os.mkdir(params["output_dir"])
 
     # start timing
     start_time = time.time()
