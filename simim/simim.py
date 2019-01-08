@@ -141,7 +141,10 @@ def simim(params):
     # check recalculation matches the fitted values
     assert np.allclose(model.impl.yhat, model(emitter_values, attractor_values))
 
-    print("%d data %s/%s Poisson fit R2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
+    print("%d data %s/%s Poisson fit:\nR2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
+    print("       ", params["attractors"])
+    print("alpha =", *model.alpha())
+    print("beta = %f" % model.beta())
 
     # apply scenario to dataset
     model.dataset = scenario_data.apply(model.dataset, year)
