@@ -18,6 +18,7 @@ import ukcensusapi.NISRA as NISRA
 import ukpopulation.myedata as MYEData
 import ukpopulation.snppdata as SNPPData
 import ukpopulation.nppdata as NPPData
+import ukpopulation.snhpdata as SNHPData
 
 import ukpopulation.utils as ukpoputils
 
@@ -35,12 +36,11 @@ class Instance():
     self.census_ew = Nomisweb.Nomisweb(self.cache_dir)
     self.census_sc = NRScotland.NRScotland(self.cache_dir)
     self.census_ni = NISRA.NISRA(self.cache_dir)
-    # projections
+    # population projections
     self.mye = MYEData.MYEData(self.cache_dir)
     self.snpp = SNPPData.SNPPData(self.cache_dir) 
     self.npp = NPPData.NPPData(self.cache_dir) 
-    # TODO households...
-
+    # households
     self.baseline = params["base_projection"]
 
     if not os.path.isdir(params["output_dir"]):
@@ -49,8 +49,27 @@ class Instance():
     self.output_file = os.path.join(params["output_dir"], "simim_%s_%s_%s" % (params["model_type"], params["base_projection"], os.path.basename(params["scenario"])))
     self.custom_snpp_variant = pd.DataFrame()
 
+    self.snhp = self._hack_hh()
+
     # holder for shapefile when requested
     self.shapefile = None
+
+  def _hack_hh(self):
+    """ 
+    slightly hacky collation of data from different sources 
+    TODO get ukpopulation to handle this fully
+    """
+    snhp_e = pd.read_csv("data/ons_hh_e_2016-2041.csv").drop([str(y) for y in range(2001,2014)], axis=1)
+    snhp_e = snhp_e.groupby("CODE").sum().reset_index().rename({"CODE": "GEOGRAPHY_CODE"}, axis=1)
+    snhp_e = snhp_e[snhp_e.GEOGRAPHY_CODE.str.startswith("E0")]
+    print(snhp_e["2020"].dtype)
+  
+    snhp_w = pd.read_csv("data/hh_w_2014-2039.csv").drop(["Unnamed: 0", "Unnamed: 1"], axis=1)
+    snhp_w = snhp_w[snhp_w.HOUSEHOLD_TYPE == "All" ].groupby("GEOGRAPHY_CODE").sum().reset_index()
+
+    snhp_s = SNHPData.SNHPData(self.cache_dir).data[ukpoputils.SC]
+
+    return pd.concat([snhp_e, snhp_w, snhp_s], ignore_index=True, sort=False)
 
   def get_od(self):
 
@@ -89,7 +108,8 @@ class Instance():
     # print(len(data))
     return data
 
-  def get_households(self, year, geogs):
+  # this is 2011 census data
+  def get_households2011(self, geogs):
 
     # see https://docs.python.org/3/library/warnings.html
     warnings.warn("geogs argument to get_households is currently ignored")
@@ -120,6 +140,15 @@ class Instance():
       
     households.rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1, inplace=True)
     return households
+
+  def get_households(self, year, geogs): 
+    # TODO check for missing?
+    snhp = self.snhp[self.snhp.GEOGRAPHY_CODE.isin(geogs)][["GEOGRAPHY_CODE", str(year)]].rename({str(year): "HOUSEHOLDS"}, axis=1)
+
+    # aggregate census-merged LADs 'E06000053' 'E09000001'
+    snhp.loc[snhp.GEOGRAPHY_CODE=="E09000033", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].HOUSEHOLDS.sum()
+    snhp.loc[snhp.GEOGRAPHY_CODE=="E06000052", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].HOUSEHOLDS.sum()
+    return snhp
 
   def get_jobs(self, year, geogs):
 

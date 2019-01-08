@@ -108,25 +108,23 @@ def simim(params):
     snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) * (snpp["PEOPLE_" + params["base_projection"]] / snpp.PEOPLE_prev)
     snpp.drop(["PEOPLE_prev", "net_delta", "YEAR"], axis=1, inplace=True)
 
-    # TODO use projections...
-    # TODO and adjust for previous changes from scenario
     snhp = input_data.get_households(year, geogs)
 
     jobs = input_data.get_jobs(year, geogs)
 
     gva = input_data.get_gva(year, geogs)
 
-    # Merge population *at origin*
+    # Merge emitters (population) *at origin*
     dataset = od_2011
     dataset = dataset.merge(snpp, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
-    # Merge households & jobs *at destination*
+    # Merge attractors (e.g. households & jobs) *at destination*
     dataset = dataset.merge(snhp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
     dataset = dataset.merge(jobs, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
     dataset = dataset.merge(gva, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
 
     # save dataset for testing
-    # dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")
-    # break
+    #dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")
+    #break
 
     model = models.Model(params["model_type"], 
                          params["model_subtype"], 
