@@ -49,27 +49,10 @@ class Instance():
     self.output_file = os.path.join(params["output_dir"], "simim_%s_%s_%s" % (params["model_type"], params["base_projection"], os.path.basename(params["scenario"])))
     self.custom_snpp_variant = pd.DataFrame()
 
-    self.snhp = self._hack_hh()
+    self.snhp = SNHPData.SNHPData(self.cache_dir)
 
     # holder for shapefile when requested
     self.shapefile = None
-
-  def _hack_hh(self):
-    """ 
-    slightly hacky collation of data from different sources 
-    TODO get ukpopulation to handle this fully
-    """
-    snhp_e = pd.read_csv("data/ons_hh_e_2016-2041.csv").drop([str(y) for y in range(2001,2014)], axis=1)
-    snhp_e = snhp_e.groupby("CODE").sum().reset_index().rename({"CODE": "GEOGRAPHY_CODE"}, axis=1)
-    snhp_e = snhp_e[snhp_e.GEOGRAPHY_CODE.str.startswith("E0")]
-    print(snhp_e["2020"].dtype)
-  
-    snhp_w = pd.read_csv("data/hh_w_2014-2039.csv").drop(["Unnamed: 0", "Unnamed: 1"], axis=1)
-    snhp_w = snhp_w[snhp_w.HOUSEHOLD_TYPE == "All" ].groupby("GEOGRAPHY_CODE").sum().reset_index()
-
-    snhp_s = SNHPData.SNHPData(self.cache_dir).data[ukpoputils.SC]
-
-    return pd.concat([snhp_e, snhp_w, snhp_s], ignore_index=True, sort=False)
 
   def get_od(self):
 
@@ -142,12 +125,12 @@ class Instance():
     return households
 
   def get_households(self, year, geogs): 
-    # TODO check for missing?
-    snhp = self.snhp[self.snhp.GEOGRAPHY_CODE.isin(geogs)][["GEOGRAPHY_CODE", str(year)]].rename({str(year): "HOUSEHOLDS"}, axis=1)
 
     # aggregate census-merged LADs 'E06000053' 'E09000001'
+    snhp = self.snhp.aggregate(geogs, year).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
     snhp.loc[snhp.GEOGRAPHY_CODE=="E09000033", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].HOUSEHOLDS.sum()
     snhp.loc[snhp.GEOGRAPHY_CODE=="E06000052", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].HOUSEHOLDS.sum()
+
     return snhp
 
   def get_jobs(self, year, geogs):
