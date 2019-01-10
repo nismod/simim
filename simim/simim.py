@@ -106,7 +106,7 @@ def simim(params):
       snpp.drop("PEOPLE_" + params["base_projection"], axis=1, inplace=True)
     snpp = input_data.get_people(year, geogs).merge(snpp, on="GEOGRAPHY_CODE", suffixes=("_" + params["base_projection"], "_prev"))
     snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) * (snpp["PEOPLE_" + params["base_projection"]] / snpp.PEOPLE_prev)
-    snpp.drop(["PEOPLE_prev", "net_delta", "YEAR"], axis=1, inplace=True)
+    snpp.drop(["PEOPLE_prev", "net_delta", "PROJECTED_YEAR_NAME"], axis=1, inplace=True)
 
     snhp = input_data.get_households(year, geogs)
 
