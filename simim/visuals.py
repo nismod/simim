@@ -36,8 +36,12 @@ class Visual:
       ax.set_title(title)
     ax.plot(x, y, marker, **kwargs)
 
-  def matrix(self, panel, matrix, title=None, **kwargs):
+  def matrix(self, panel, matrix, title=None, xlabel=None, ylabel=None, **kwargs):
     ax = self.panel(panel)
+    if xlabel:
+      ax.set_xlabel(xlabel)
+    if ylabel:
+      ax.set_ylabel(ylabel)
     if title:
       ax.set_title(title)
     ax.imshow(matrix, **kwargs)

@@ -40,7 +40,7 @@ def main(params):
 
     v.scatter((0,0), model.dataset.MIGRATIONS, model.impl.yhat, "b.", title="%d %s migration model fit: R^2=%.2f" \
       % (year, params["model_type"], model.impl.pseudoR2))
-    v.line((0,0), [0,max(model.dataset.MIGRATIONS)], [0,max(model.dataset.MIGRATIONS)], "k", linewidth=0.25)
+    v.line((0,0), [0,max(model.dataset.MIGRATIONS)], [0,max(model.dataset.MIGRATIONS)], "k", xlabel="Observed", ylabel="Model", linewidth=0.25)
 
     # N.Herts = "E07000099"
     # Cambridge "E07000008"
@@ -64,14 +64,14 @@ def main(params):
       values=net_in.net_delta, clim=(0, np.max(net_in.net_delta)), cmap="Reds", edgecolor="darkgrey", linewidth=0.25)
 
     odmatrix = od_matrix(model.dataset, "MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
-    v.matrix((1,0), np.log(odmatrix+1), cmap="Greens", title="Actual OD matrix (displaced log scale)")
+    v.matrix((1,0), np.log(odmatrix+1), cmap="Greens", xlabel="Destination", ylabel="Origin", title="Actual OD matrix (displaced log scale)")
     model_odmatrix = od_matrix(model.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
-    v.matrix((1,1), np.log(model_odmatrix+1), cmap="Greys", title="%s model OD matrix (displaced log scale)" % params["model_type"])
+    v.matrix((1,1), np.log(model_odmatrix+1), cmap="Greys", xlabel="Destination", ylabel="Origin", title="%s model OD matrix (displaced log scale)" % params["model_type"])
     # construct new OD matrix
     changed_odmatrix = od_matrix(model.dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
     delta_odmatrix = changed_odmatrix - model_odmatrix
     # we get away with log here as no values are -ve
-    v.matrix((1,2), np.log(1+delta_odmatrix), cmap="Oranges", title="%s model perturbed OD matrix delta" % params["model_type"])
+    v.matrix((1,2), np.log(1+delta_odmatrix), cmap="Oranges", xlabel="Destination", ylabel="Origin", title="%s model perturbed OD matrix delta" % params["model_type"])
     #absmax = max(np.max(delta_od),-np.min(delta_od))
     #v.matrix((1,2), delta_od, 'RdBu', title="Gravity model perturbed OD matrix delta", clim=(-absmax/50,absmax/50))
 

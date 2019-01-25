@@ -143,6 +143,7 @@ def simim(params):
 
     print("%d data %s/%s Poisson fit:\nR2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
     print("       ", params["attractors"])
+    print("k =", model.k())
     print("alpha =", *model.alpha())
     print("beta = %f" % model.beta())
 
