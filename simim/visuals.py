@@ -45,8 +45,8 @@ class Visual:
     if title:
       ax.set_title(title)
     ax.imshow(matrix, **kwargs)
-    ax.xaxis.set_visible(False)
-    ax.yaxis.set_visible(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
 
   def polygons(self, panel, gdf, title=None, xlim=None, ylim=None, **kwargs):
     ax = self.panel(panel)
