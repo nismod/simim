@@ -3,9 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from pysal.contrib.spint.gravity import Gravity
-from pysal.contrib.spint.gravity import Production
-from pysal.contrib.spint.gravity import Attraction
+from spint import Gravity, Attraction, Production
 
 def main():
 

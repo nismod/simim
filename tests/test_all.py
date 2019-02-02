@@ -7,10 +7,6 @@ import numpy as np
 import pandas as pd
 from unittest import TestCase
 
-from pysal.contrib.spint.gravity import Gravity
-from pysal.contrib.spint.gravity import Attraction
-from pysal.contrib.spint.gravity import Doubly
-
 from simim.utils import r2, rmse
 import simim.models as models
 

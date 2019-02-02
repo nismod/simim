@@ -1,6 +1,6 @@
 numpy
 pandas
 geopandas
-pysal
+spint
 ukcensusapi
 ukpopulation

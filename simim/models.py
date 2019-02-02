@@ -2,10 +2,7 @@
 
 import numpy as np
 
-from pysal.contrib.spint.gravity import Gravity
-from pysal.contrib.spint.gravity import Attraction
-from pysal.contrib.spint.gravity import Production
-from pysal.contrib.spint.gravity import Doubly
+from spint import Gravity, Attraction, Production, Doubly
 
 _valid_types = ["gravity", "production", "attraction", "doubly"]
 _valid_subtypes = ["pow", "exp"]
