@@ -3,8 +3,6 @@
 
 ** **work-in-progress** **
 
-NB this package requires the development version of [`ukpopulation`](https://github.com/nismod/ukpopulation)
-
 ### Introduction
 
 This package aims to build a flexible custom population projection generation tool based on spatial interaction models of internal migration within the UK (probably GB only). The tool is intended to be used to model the impact of large and long-term infrastructure changes on population distribution and growth.
