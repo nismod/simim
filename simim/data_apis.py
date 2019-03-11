@@ -134,15 +134,25 @@ class Instance():
     return snhp
 
   def get_jobs(self, year, geogs):
+    """
+    NM57 has both total jobs and density*, but raw data needs to be unstacked for ease of use
+    *nomisweb: "Jobs density is the numbers of jobs per resident aged 16-64. For example, 
+    a job density of 1.0 would mean that there is one job for every resident of working age."
+    """
 
     warnings.warn("geogs argument to get_jobs is currently ignored")
 
+    # http://www.nomisweb.co.uk/api/v01/dataset/NM_57_1.data.tsv?
+    # geography=1879048193...1879048573,1879048583,1879048574...1879048582&
+    # date=latest&
+    # item=1,3&measures=20100&
+    # select=date_name,geography_name,geography_code,item_name,measures_name,obs_value,obs_status_name
     query_params = {
       "date": "latest",
-      "item": "1",
+      "item": "1,3",
       "MEASURES": "20100",
       "geography": "1879048193...1879048573,1879048583,1879048574...1879048582",
-      "select": "GEOGRAPHY_CODE,OBS_VALUE"
+      "select": "GEOGRAPHY_CODE,ITEM_NAME,OBS_VALUE"
     }
     jobs = self.census_ew.get_data("NM_57_1", query_params)
 
@@ -152,9 +162,11 @@ class Instance():
     
     # TODO filter by geogs rather than hard-coding GB
     jobs = jobs[~jobs.GEOGRAPHY_CODE.isin(['E06000053', 'E09000001', 'N09000001', 'N09000002', 'N09000003', 'N09000004', 'N09000005', 
-                                           'N09000006', 'N09000007', 'N09000008', 'N09000009', 'N09000010', 'N09000011'])] \
-      .rename({"OBS_VALUE": "JOBS"}, axis=1)
-    return jobs
+                                           'N09000006', 'N09000007', 'N09000008', 'N09000009', 'N09000010', 'N09000011'])]
+
+    jobs = jobs.set_index(["GEOGRAPHY_CODE", "ITEM_NAME"]).unstack(level=-1).reset_index()
+    jobs.columns = jobs.columns.map("".join)
+    return jobs.rename({"OBS_VALUEJobs density": "JOBS_DENSITY", "OBS_VALUETotal jobs": "JOBS"}, axis=1)
 
   # temporarily loading from csv pending response from nomisweb
   def get_gva(self, year, geogs):

@@ -34,7 +34,7 @@ def simim(params):
   # # TODO convert OD to non-CM LAD (more up to date migration data uses LAD)
   # TODO need to remap old NI codes 95.. to N... ones
 
-  lad_lookup = input_data.get_lad_lookup() #pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
+  lad_lookup = input_data.get_lad_lookup() 
 
   # TODO need to remap old NI codes 95.. to N... ones
 
@@ -52,7 +52,7 @@ def simim(params):
   od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isnull()) & (~od_2011.O_GEOGRAPHY_CODE.isnull())]
   od_2011.drop(["ADDRESS_ONE_YEAR_AGO_CODE", "USUAL_RESIDENCE_CODE"], axis=1, inplace=True)
 
-  # TODO adjustments for Westminster/City or London and Cornwall/Scilly Isles
+  # TODO census merged LAD adjustments for Westminster/City of London and Cornwall/Scilly Isles
   # for now just remove City & Scilly
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E09000001") & (od_2011.D_GEOGRAPHY_CODE != "E09000001")]
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E06000053") & (od_2011.D_GEOGRAPHY_CODE != "E06000053")]
@@ -62,9 +62,13 @@ def simim(params):
   # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
 
-  dists = calc_distances(input_data.get_shapefile(url))
-  # merge with OD
+  shapefile = input_data.get_shapefile(url)
+  dists = calc_distances(shapefile)
+  # merge dists with OD
   od_2011 = od_2011.merge(dists, how="left", left_on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"], right_on=["orig", "dest"]).drop(["orig", "dest"], axis=1)
+  # add areas
+  od_2011 = od_2011.merge(shapefile[["lad16cd", "st_areasha"]], left_on="D_GEOGRAPHY_CODE", right_on="lad16cd").drop("lad16cd", axis=1).rename({"st_areasha": "AREA_KM2"}, axis=1)
+  od_2011.loc[:,"AREA_KM2"] *= 0.01
 
   # set minimum cost dist for O=D rows
   od_2011.loc[od_2011.O_GEOGRAPHY_CODE == od_2011.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
@@ -126,6 +130,7 @@ def simim(params):
     #dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")
     #break
 
+    print(params["attractors"])
     model = models.Model(params["model_type"], 
                          params["model_subtype"], 
                          dataset, 
