@@ -21,6 +21,7 @@ setuptools.setup(name='simim',
                     'scipy',
                     'spint',
                     'ukpopulation',
+                    'Cython',
                     # for visualisation:
                     'matplotlib',
                     'contextily',
