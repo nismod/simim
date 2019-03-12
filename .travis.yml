@@ -20,7 +20,8 @@ python:
 install:
   # workaround for 3.7-dev build error: ValueError: bad marshal data (unknown type code)
   #- pip install distutils-pytest
-  - pip install -r requirements.txt
+  #- pip install -r requirements.txt
+  - ./setup.py install
 script:
   - ./setup.py test
 
