@@ -1,6 +1,0 @@
-numpy
-pandas
-geopandas
-spint
-ukcensusapi
-ukpopulation
