@@ -1,0 +1,7 @@
+# install hacks
+
+#pip install cython
+pip install -r requirements.txt
+./setup.py install
+./setup.py test
+scripts/run.py -c config/gravity.json

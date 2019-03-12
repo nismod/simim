@@ -3,4 +3,8 @@ pandas
 geopandas
 spint
 ukcensusapi
+openpyxl<2.6.0
 ukpopulation
+matplotlib
+contextily
+descartes
