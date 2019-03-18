@@ -166,7 +166,7 @@ class Instance():
 
     jobs = jobs.set_index(["GEOGRAPHY_CODE", "ITEM_NAME"]).unstack(level=-1).reset_index()
     jobs.columns = jobs.columns.map("".join)
-    return jobs.rename({"OBS_VALUEJobs density": "JOBS_DENSITY", "OBS_VALUETotal jobs": "JOBS"}, axis=1)
+    return jobs.rename({"OBS_VALUEJobs density": "JOBS_PER_WORKING_AGE_PERSON", "OBS_VALUETotal jobs": "JOBS"}, axis=1)
 
   # temporarily loading from csv pending response from nomisweb
   def get_gva(self, year, geogs):

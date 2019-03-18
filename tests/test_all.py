@@ -117,7 +117,6 @@ class Test(TestCase):
     # multi factor attraction
     for model_subtype in ["pow", "exp"]:
       gravity = models.Model("gravity", model_subtype, Test.dataset, "MIGRATIONS", ["PEOPLE", "JOBS"], "HOUSEHOLDS", "DISTANCE")
-      print(gravity.impl.params)
       self.assertTrue(rmse(gravity([Test.dataset.PEOPLE.values, Test.dataset.JOBS.values], Test.dataset.HOUSEHOLDS.values), gravity.impl.yhat) < 1e-10)
 
   def test_production(self):

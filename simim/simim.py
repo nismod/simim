@@ -66,9 +66,11 @@ def simim(params):
   dists = calc_distances(shapefile)
   # merge dists with OD
   od_2011 = od_2011.merge(dists, how="left", left_on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"], right_on=["orig", "dest"]).drop(["orig", "dest"], axis=1)
-  # add areas
-  od_2011 = od_2011.merge(shapefile[["lad16cd", "st_areasha"]], left_on="D_GEOGRAPHY_CODE", right_on="lad16cd").drop("lad16cd", axis=1).rename({"st_areasha": "AREA_KM2"}, axis=1)
-  od_2011.loc[:,"AREA_KM2"] *= 0.01
+  # add areas (converting from square metres (not hectares!) to square km)
+  od_2011 = od_2011.merge(shapefile[["lad16cd", "st_areasha"]], left_on="O_GEOGRAPHY_CODE", right_on="lad16cd").drop("lad16cd", axis=1).rename({"st_areasha": "O_AREA_KM2"}, axis=1)
+  od_2011.loc[:,"O_AREA_KM2"] *= 1e-6
+  od_2011 = od_2011.merge(shapefile[["lad16cd", "st_areasha"]], left_on="D_GEOGRAPHY_CODE", right_on="lad16cd").drop("lad16cd", axis=1).rename({"st_areasha": "D_AREA_KM2"}, axis=1)
+  od_2011.loc[:,"D_AREA_KM2"] *= 1e-6
 
   # set minimum cost dist for O=D rows
   od_2011.loc[od_2011.O_GEOGRAPHY_CODE == od_2011.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
@@ -120,11 +122,35 @@ def simim(params):
 
     # Merge emitters (population) *at origin*
     dataset = od_2011
+    # need people at dests for hh size calcs
+    dataset = dataset.merge(snpp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop(["GEOGRAPHY_CODE", "PEOPLE_ppp"], axis=1).rename({"PEOPLE": "D_PEOPLE"}, axis=1)
     dataset = dataset.merge(snpp, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
     # Merge attractors (e.g. households & jobs) *at destination*
     dataset = dataset.merge(snhp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
     dataset = dataset.merge(jobs, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
     dataset = dataset.merge(gva, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
+
+
+    dataset["PEOPLE_DENSITY"] = dataset.PEOPLE / dataset.O_AREA_KM2
+    dataset["HOUSEHOLDS_DENSITY"] = dataset.HOUSEHOLDS / dataset.D_AREA_KM2
+    dataset["HOUSEHOLDS_SIZE"] = dataset.HOUSEHOLDS / dataset.D_PEOPLE
+    dataset["JOB_DENSITY"] = dataset.JOBS / dataset.D_AREA_KM2
+
+    # # take the diagonal to get some totals
+    # diag = dataset[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE]
+    # # data is repeated for each origin or destination hence the extra divisor
+    # mean_pop_density = diag.PEOPLE.sum() / diag.O_AREA_KM2.sum() 
+    # mean_hh_density = diag.HOUSEHOLDS.sum() / diag.D_AREA_KM2.sum() 
+    # mean_hh_size = diag.D_PEOPLE.sum() / diag.HOUSEHOLDS.sum() 
+    # mean_job_density = diag.JOBS.sum() / diag.D_AREA_KM2.sum() 
+    # dataset["PEOPLE_DENSITY_DEV"] = dataset.PEOPLE / (dataset.O_AREA_KM2 * mean_pop_density)
+    # dataset["HOUSEHOLDS_DENSITY_DEV"] = dataset.HOUSEHOLDS / (dataset.D_AREA_KM2 * mean_hh_density)
+    # dataset["HOUSEHOLDS_SIZE_DEV"] = dataset.HOUSEHOLDS / (dataset.D_PEOPLE * mean_hh_size)
+    # dataset["JOB_DENSITY_DEV"] = dataset.JOBS / (dataset.D_AREA_KM2 * mean_job_density)
+    # print(diag.JOBS/diag.PEOPLE_ppp - diag.JOBS_PER_PERSON)
+
+    # # print(diag.columns.values)
+    # # print(diag.head())
 
     # save dataset for testing
     #dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")
@@ -156,9 +182,11 @@ def simim(params):
     model.dataset = scenario_data.apply(model.dataset, year)
     
     changed_attractor_values = get_named_values(model.dataset, params["attractors"], prefix="CHANGED_")
+    # emission factors aren't impacted by the (immediate) scenario
+    emitter_values = get_named_values(model.dataset, params["emitters"], prefix="")
 
     # re-evaluate model and record changes
-    model.dataset["CHANGED_MIGRATIONS"] = model(model.dataset.PEOPLE.values, changed_attractor_values)
+    model.dataset["CHANGED_MIGRATIONS"] = model(emitter_values, changed_attractor_values)
     # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
 
     # compute migration inflows and outflow changes 
