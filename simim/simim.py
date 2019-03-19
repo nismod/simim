@@ -17,10 +17,29 @@ from simim.utils import get_named_values, calc_distances
 # ctrlads = ["E07000178", "E06000042", "E07000008"]
 # arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
 
+ORIGIN_PREFIX = "O_"
+DESTINATION_PREFIX = "D_"
+
+def _merge_factor(dataset, data, factors):
+  omapping = dict(zip(factors, [ORIGIN_PREFIX + f for f in factors]))
+  dataset = dataset.merge(data[["GEOGRAPHY_CODE"] + factors], how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1) \
+    .rename(omapping, axis=1)
+  dmapping = dict(zip(factors, [DESTINATION_PREFIX + f for f in factors]))
+  dataset = dataset.merge(data[["GEOGRAPHY_CODE"] + factors], how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1) \
+    .rename(dmapping, axis=1)
+  return dataset
+
+
 def simim(params):
 
-  input_data = data_apis.Instance(params)
+  # Differentiate between origin and destination values
+  # This allows use of e.g. derived values (e.g. population density) to be both an emitter and an attractor. Absolute values cannot (->singular matrix)
+  params["emitters"] = [ORIGIN_PREFIX + e for e in params["emitters"]]
+  params["attractors"] = [DESTINATION_PREFIX + e for e in params["attractors"]]
+
   scenario_data = scenario.Scenario(os.path.join(params["scenario_dir"], params["scenario"]), params["attractors"])
+
+  input_data = data_apis.Instance(params)
 
 
   if params["base_projection"] != "ppp":
@@ -41,9 +60,9 @@ def simim(params):
   # only need the CMLAD->LAD mapping
   #lad_lookup = lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
   od_2011 = od_2011.merge(lad_lookup, how='left', left_on="ADDRESS_ONE_YEAR_AGO_CODE", right_on="LAD_CM") \
-    .rename({"LAD": "O_GEOGRAPHY_CODE"}, axis=1).drop(["LAD_CM"], axis=1)
+    .rename({"LAD": ORIGIN_PREFIX + "GEOGRAPHY_CODE"}, axis=1).drop(["LAD_CM"], axis=1)
   od_2011 = od_2011.merge(lad_lookup, how='left', left_on="USUAL_RESIDENCE_CODE", right_on="LAD_CM") \
-    .rename({"LAD": "D_GEOGRAPHY_CODE", "OBS_VALUE": "MIGRATIONS"}, axis=1).drop(["LAD_CM"], axis=1)
+    .rename({"LAD": DESTINATION_PREFIX + "GEOGRAPHY_CODE", "OBS_VALUE": "MIGRATIONS"}, axis=1).drop(["LAD_CM"], axis=1)
 
   # ensure blanks arising from Sc/NI not being in lookup are reinstated from original data
   od_2011.loc[pd.isnull(od_2011.O_GEOGRAPHY_CODE), "O_GEOGRAPHY_CODE"] = od_2011.ADDRESS_ONE_YEAR_AGO_CODE[pd.isnull(od_2011.O_GEOGRAPHY_CODE)]
@@ -108,7 +127,7 @@ def simim(params):
   model = None
 
   # use end year if defined in config, otherwise default to SNPP end year (up to 2039 due to Wales SNPP still being 2014-based)
-  end_year = params.get("end_year", input_data.snpp.max_year("en") - 1)
+  end_year = params.get("end_year", input_data.snpp.max_year("en") - 2)
 
   if end_year < scenario_data.timeline()[0]:
     raise RuntimeError("end year for model run cannot be before start year of scenario")
@@ -128,34 +147,30 @@ def simim(params):
 
     gva = input_data.get_gva(year, geogs)
 
-    # Merge emitters (population) *at origin*
-    dataset = od_2011
-    # need people at dests for hh size calcs
-    dataset = dataset.merge(snpp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop(["GEOGRAPHY_CODE", "PEOPLE_ppp"], axis=1).rename({"PEOPLE": "D_PEOPLE"}, axis=1)
-    dataset = dataset.merge(snpp, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
-    # Merge attractors (e.g. households & jobs) *at destination*
-    dataset = dataset.merge(snhp, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
-    dataset = dataset.merge(jobs, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
-    dataset = dataset.merge(gva, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE").drop("GEOGRAPHY_CODE", axis=1)
+    # Merge attractors and emitters *all at both origin AND destination*
+    dataset = _merge_factor(od_2011, snpp, ["PEOPLE", "PEOPLE_ppp"]).drop("D_PEOPLE_ppp", axis=1)
+    dataset = _merge_factor(dataset, snhp, ["HOUSEHOLDS"]) 
+    dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
+    dataset = _merge_factor(dataset, gva, ["GVA"])
 
-
-    dataset["PEOPLE_DENSITY"] = dataset.PEOPLE / dataset.O_AREA_KM2
-    dataset["HOUSEHOLDS_DENSITY"] = dataset.HOUSEHOLDS / dataset.D_AREA_KM2
-    dataset["HOUSEHOLDS_SIZE"] = dataset.HOUSEHOLDS / dataset.D_PEOPLE
-    dataset["JOBS_DENSITY"] = dataset.JOBS / dataset.D_AREA_KM2
+    # Calculate some derived factors
+    dataset[ORIGIN_PREFIX + "PEOPLE_DENSITY"] = dataset[ORIGIN_PREFIX + "PEOPLE"] / dataset.O_AREA_KM2
+    dataset[DESTINATION_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_AREA_KM2
+    dataset[DESTINATION_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_PEOPLE
+    dataset[DESTINATION_PREFIX + "JOBS_DENSITY"] = dataset[DESTINATION_PREFIX + "JOBS"] / dataset.D_AREA_KM2
 
     # London's high GVA does not prevent migration so we artificially reduce it
-    dataset["GVA_EX_LONDON"] = dataset.GVA
-    min_gva = min(dataset.GVA)
+    dataset[DESTINATION_PREFIX + "GVA_EX_LONDON"] = dataset[DESTINATION_PREFIX + "GVA"]
+    min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
     dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "GVA_EX_LONDON"] = min_gva 
 
     # # take the diagonal to get some totals
     # data is repeated for each origin or destination hence the extra divisor
-    # mean_pop_density = diag.PEOPLE.sum() / diag.O_AREA_KM2.sum()
+    # mean_pop_density = diag.O_PEOPLE.sum() / diag.O_AREA_KM2.sum()
     # mean_hh_density = diag.HOUSEHOLDS.sum() / diag.D_AREA_KM2.sum()
     # mean_hh_size = diag.D_PEOPLE.sum() / diag.HOUSEHOLDS.sum()
     # mean_job_density = diag.JOBS.sum() / diag.D_AREA_KM2.sum()
-    # dataset["PEOPLE_DENSITY_DEV"] = dataset.PEOPLE / (dataset.O_AREA_KM2 * mean_pop_density)
+    # dataset["PEOPLE_DENSITY_DEV"] = dataset.O_PEOPLE / (dataset.O_AREA_KM2 * mean_pop_density)
     # dataset["HOUSEHOLDS_DENSITY_DEV"] = dataset.HOUSEHOLDS / (dataset.D_AREA_KM2 * mean_hh_density)
     # dataset["HOUSEHOLDS_SIZE_DEV"] = dataset.HOUSEHOLDS / (dataset.D_PEOPLE * mean_hh_size)
     # dataset["JOB_DENSITY_DEV"] = dataset.JOBS / (dataset.D_AREA_KM2 * mean_job_density)
@@ -167,7 +182,6 @@ def simim(params):
     #dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")
     #break
 
-    print(params["attractors"])
     model = models.Model(params["model_type"],
                          params["model_subtype"],
                          dataset,
