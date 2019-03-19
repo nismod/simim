@@ -3,7 +3,7 @@
 import os
 import numpy as np
 import pandas as pd
-import geopandas 
+import geopandas
 import matplotlib.pyplot as plt
 import contextily as ctx
 import simim.data_apis as data_apis
@@ -21,7 +21,7 @@ def simim(params):
 
   input_data = data_apis.Instance(params)
   scenario_data = scenario.Scenario(os.path.join(params["scenario_dir"], params["scenario"]), params["attractors"])
-  
+
 
   if params["base_projection"] != "ppp":
     raise NotImplementedError("TODO variant projections...")
@@ -34,7 +34,7 @@ def simim(params):
   # # TODO convert OD to non-CM LAD (more up to date migration data uses LAD)
   # TODO need to remap old NI codes 95.. to N... ones
 
-  lad_lookup = input_data.get_lad_lookup() 
+  lad_lookup = input_data.get_lad_lookup()
 
   # TODO need to remap old NI codes 95.. to N... ones
 
@@ -76,7 +76,7 @@ def simim(params):
   od_2011.loc[od_2011.O_GEOGRAPHY_CODE == od_2011.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
   #print(od_2011.head())
 
-  # TODO 
+  # TODO
   # 26 LGDs -> 11 in 2014 with N09000... codes
   # see https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=2ahUKEwiXzuiWu5rfAhURCxoKHYH1A9YQFjAAegQIBRAC&url=http%3A%2F%2Fwww.ninis2.nisra.gov.uk%2FDownload%2FPopulation%2FBirths%2520to%2520Mothers%2520from%2520Outside%2520Northern%2520Ireland%2520%25202013%2520Provisional%2520(administrative%2520geographies).xlsx&usg=AOvVaw3ZI3EDJAJxtsFQVRMEX37C
   if ukpoputils.NI not in input_data.coverage:
@@ -90,8 +90,14 @@ def simim(params):
   # # ensure base dataset is sorted so that the mu/alphas for the constrained models are interpreted correctly
   # od_2011.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"], inplace=True)
 
+  # use start year if defined in config, otherwise default to SNPP start year
+  start_year = params.get("start_year", input_data.snpp.min_year("en"))
+
+  if start_year > scenario_data.timeline()[0]:
+    raise RuntimeError("start year for model run cannot be after start year of scenario")
+
   # loop from snpp start to scenario start
-  for year in range(input_data.snpp.min_year("en"), timeline[0]):
+  for year in range(start_year, timeline[0] + 1):
     snpp = input_data.get_people(year, geogs)
     # pre-secenario the custom variant is same as the base projection
     snpp["PEOPLE_" + params["base_projection"]] = snpp.PEOPLE
@@ -100,13 +106,15 @@ def simim(params):
     print("pre-scenario %d" % year)
 
   model = None
-  # loop over scenario years (up to 2039 due to Wales SNPP still being 2014-based)
-  for year in range(scenario_data.timeline()[0], input_data.snpp.max_year("en") - 1):
-    # people
 
-    # newsnpp = input_data.get_people(year, geogs)
-    # print(newsnpp.head())
+  # use end year if defined in config, otherwise default to SNPP end year (up to 2039 due to Wales SNPP still being 2014-based)
+  end_year = params.get("end_year", input_data.snpp.max_year("en") - 1)
 
+  if end_year < scenario_data.timeline()[0]:
+    raise RuntimeError("end year for model run cannot be before start year of scenario")
+
+  # loop over scenario years to end_year
+  for year in range(scenario_data.timeline()[0], end_year + 1):
     # drop the baseline for the previous year if present (it interferes with the merge)
     if "PEOPLE_" + params["base_projection"] in snpp:
       snpp.drop("PEOPLE_" + params["base_projection"], axis=1, inplace=True)
@@ -134,35 +142,38 @@ def simim(params):
     dataset["PEOPLE_DENSITY"] = dataset.PEOPLE / dataset.O_AREA_KM2
     dataset["HOUSEHOLDS_DENSITY"] = dataset.HOUSEHOLDS / dataset.D_AREA_KM2
     dataset["HOUSEHOLDS_SIZE"] = dataset.HOUSEHOLDS / dataset.D_PEOPLE
-    dataset["JOB_DENSITY"] = dataset.JOBS / dataset.D_AREA_KM2
+    dataset["JOBS_DENSITY"] = dataset.JOBS / dataset.D_AREA_KM2
+
+    # London's high GVA does not prevent migration so we artificially reduce it
+    dataset["GVA_EX_LONDON"] = dataset.GVA
+    min_gva = min(dataset.GVA)
+    dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "GVA_EX_LONDON"] = min_gva 
 
     # # take the diagonal to get some totals
-    # diag = dataset[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE]
-    # # data is repeated for each origin or destination hence the extra divisor
-    # mean_pop_density = diag.PEOPLE.sum() / diag.O_AREA_KM2.sum() 
-    # mean_hh_density = diag.HOUSEHOLDS.sum() / diag.D_AREA_KM2.sum() 
-    # mean_hh_size = diag.D_PEOPLE.sum() / diag.HOUSEHOLDS.sum() 
-    # mean_job_density = diag.JOBS.sum() / diag.D_AREA_KM2.sum() 
+    # data is repeated for each origin or destination hence the extra divisor
+    # mean_pop_density = diag.PEOPLE.sum() / diag.O_AREA_KM2.sum()
+    # mean_hh_density = diag.HOUSEHOLDS.sum() / diag.D_AREA_KM2.sum()
+    # mean_hh_size = diag.D_PEOPLE.sum() / diag.HOUSEHOLDS.sum()
+    # mean_job_density = diag.JOBS.sum() / diag.D_AREA_KM2.sum()
     # dataset["PEOPLE_DENSITY_DEV"] = dataset.PEOPLE / (dataset.O_AREA_KM2 * mean_pop_density)
     # dataset["HOUSEHOLDS_DENSITY_DEV"] = dataset.HOUSEHOLDS / (dataset.D_AREA_KM2 * mean_hh_density)
     # dataset["HOUSEHOLDS_SIZE_DEV"] = dataset.HOUSEHOLDS / (dataset.D_PEOPLE * mean_hh_size)
     # dataset["JOB_DENSITY_DEV"] = dataset.JOBS / (dataset.D_AREA_KM2 * mean_job_density)
-    # print(diag.JOBS/diag.PEOPLE_ppp - diag.JOBS_PER_PERSON)
 
-    # # print(diag.columns.values)
-    # # print(diag.head())
+    # diag = dataset[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE]
+    # print(diag.head())
 
     # save dataset for testing
     #dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")
     #break
 
     print(params["attractors"])
-    model = models.Model(params["model_type"], 
-                         params["model_subtype"], 
-                         dataset, 
-                         params["observation"], 
+    model = models.Model(params["model_type"],
+                         params["model_subtype"],
+                         dataset,
+                         params["observation"],
                          params["emitters"],
-                         params["attractors"], 
+                         params["attractors"],
                          params["cost"])
     # dataset is now sunk into model, prevent accidental access by deleting the original
     del dataset
@@ -173,14 +184,16 @@ def simim(params):
     assert np.allclose(model.impl.yhat, model(emitter_values, attractor_values))
 
     print("%d data %s/%s Poisson fit:\nR2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
-    print("       ", params["attractors"])
     print("k =", model.k())
+    print("       ", params["emitters"])
+    print("mu    =", *model.mu())
+    print("       ", params["attractors"])
     print("alpha =", *model.alpha())
     print("beta = %f" % model.beta())
 
     # apply scenario to dataset
     model.dataset = scenario_data.apply(model.dataset, year)
-    
+
     changed_attractor_values = get_named_values(model.dataset, params["attractors"], prefix="CHANGED_")
     # emission factors aren't impacted by the (immediate) scenario
     emitter_values = get_named_values(model.dataset, params["emitters"], prefix="")
@@ -189,9 +202,9 @@ def simim(params):
     model.dataset["CHANGED_MIGRATIONS"] = model(emitter_values, changed_attractor_values)
     # print(model.dataset[dataset.MIGRATIONS != dataset.CHANGED_MIGRATIONS])
 
-    # compute migration inflows and outflow changes 
-    delta = pd.DataFrame({"o_lad16cd": model.dataset.O_GEOGRAPHY_CODE, 
-                          "d_lad16cd": model.dataset.D_GEOGRAPHY_CODE, 
+    # compute migration inflows and outflow changes
+    delta = pd.DataFrame({"o_lad16cd": model.dataset.O_GEOGRAPHY_CODE,
+                          "d_lad16cd": model.dataset.D_GEOGRAPHY_CODE,
                           "delta": -model.dataset.CHANGED_MIGRATIONS + model.dataset.MODEL_MIGRATIONS})
     # remove in-LAD migrations and sun
     o_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)

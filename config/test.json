@@ -1,15 +1,17 @@
 {
   "coverage": "GB",
   "model_type": "gravity",
+  "start_year": 2020,
+  "end_year": 2020,
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
   "emitters": ["PEOPLE", "PEOPLE_DENSITY"],
-  "attractors": ["HOUSEHOLDS"],
+  "attractors": ["HOUSEHOLDS", "HOUSEHOLDS_DENSITY", "HOUSEHOLDS_SIZE", "JOBS_DENSITY", "JOBS_PER_WORKING_AGE_PERSON", "GVA_EX_LONDON"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
   "scenario": "null.csv",
   "scenario_dir": "./data/scenarios",
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data/output",
-  "graphics": true
+  "graphics": false
 }
