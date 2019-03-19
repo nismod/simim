@@ -5,8 +5,8 @@
   "end_year": 2020,
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
-  "emitters": ["PEOPLE", "PEOPLE_DENSITY"],
-  "attractors": ["HOUSEHOLDS", "HOUSEHOLDS_DENSITY", "HOUSEHOLDS_SIZE", "JOBS_DENSITY", "JOBS_PER_WORKING_AGE_PERSON", "GVA_EX_LONDON"],
+  "emitters": ["PEOPLE", "HOUSEHOLDS_DENSITY", "JOBS_DENSITY"],
+  "attractors": ["HOUSEHOLDS", "JOBS", "PEOPLE_DENSITY", "GVA_EX_LONDON"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
   "scenario": "null.csv",
@@ -15,3 +15,4 @@
   "output_dir": "./data/output",
   "graphics": false
 }
+

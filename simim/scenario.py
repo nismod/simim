@@ -6,14 +6,19 @@ Manages scenarios
 import pandas as pd
 
 class Scenario():
-  def __init__(self, filename, attractors):
+  def __init__(self, filename, factors):
     self.data = pd.read_csv(filename)
-    if isinstance(attractors, str):
-      attractors = [attractors]
-    missing = [attractor for attractor in attractors if attractor not in self.data.columns]
+    if isinstance(factors, str):
+      factors = [factors]
+    missing = [factor for factor in factors if factor not in self.data.columns] 
 
+    print("Available factors:", factors)
+    print("Scenario factors:", [f for f in self.data.columns.values if not f.startswith("CUM_") and f not in ["GEOGRAPHY_CODE", "YEAR"]])
+    print("Scenario timeline:", self.timeline())
+
+    # add columns for factors not in scenario
+    # TODO is this actually necessary?
     for col in missing:
-      print("attractor %s not present in scenario data" % col)
       self.data[col] = 0
       self.data["CUM_"+col] = 0
 
@@ -25,8 +30,6 @@ class Scenario():
 
     # work out factors #.remove(["GEOGRAPHY_CODE", "YEAR"]) 
     self.factors = [f for f in self.data.columns.values if not f.startswith("CUM_") and f not in ["GEOGRAPHY_CODE", "YEAR"]]
-    print("Scenario factors:", self.factors)
-    print("Scenario timeline:", self.timeline())
 
     self.current_scenario = None
     self.current_time = None

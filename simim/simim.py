@@ -37,7 +37,7 @@ def simim(params):
   params["emitters"] = [ORIGIN_PREFIX + e for e in params["emitters"]]
   params["attractors"] = [DESTINATION_PREFIX + e for e in params["attractors"]]
 
-  scenario_data = scenario.Scenario(os.path.join(params["scenario_dir"], params["scenario"]), params["attractors"])
+  scenario_data = scenario.Scenario(os.path.join(params["scenario_dir"], params["scenario"]), params["emitters"] + params["attractors"])
 
   input_data = data_apis.Instance(params)
 
@@ -155,6 +155,11 @@ def simim(params):
 
     # Calculate some derived factors
     dataset[ORIGIN_PREFIX + "PEOPLE_DENSITY"] = dataset[ORIGIN_PREFIX + "PEOPLE"] / dataset.O_AREA_KM2
+    dataset[ORIGIN_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_AREA_KM2
+    dataset[ORIGIN_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_PEOPLE
+    dataset[ORIGIN_PREFIX + "JOBS_DENSITY"] = dataset[ORIGIN_PREFIX + "JOBS"] / dataset.O_AREA_KM2
+
+    dataset[DESTINATION_PREFIX + "PEOPLE_DENSITY"] = dataset[DESTINATION_PREFIX + "PEOPLE"] / dataset.D_AREA_KM2
     dataset[DESTINATION_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_AREA_KM2
     dataset[DESTINATION_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_PEOPLE
     dataset[DESTINATION_PREFIX + "JOBS_DENSITY"] = dataset[DESTINATION_PREFIX + "JOBS"] / dataset.D_AREA_KM2
@@ -162,7 +167,7 @@ def simim(params):
     # London's high GVA does not prevent migration so we artificially reduce it
     dataset[DESTINATION_PREFIX + "GVA_EX_LONDON"] = dataset[DESTINATION_PREFIX + "GVA"]
     min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
-    dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "GVA_EX_LONDON"] = min_gva 
+    dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
 
     # # take the diagonal to get some totals
     # data is repeated for each origin or destination hence the extra divisor
@@ -179,8 +184,10 @@ def simim(params):
     # print(diag.head())
 
     # save dataset for testing
-    #dataset.to_csv("./tests/data/testdata.csv.gz", index=False, compression="gzip")
+    #dataset.to_csv("./tests/data/testdata.csv", index=False)
     #break
+    # check no bad values
+    assert len(dataset[dataset.isnull().any(axis=1)]) == 0
 
     model = models.Model(params["model_type"],
                          params["model_subtype"],
