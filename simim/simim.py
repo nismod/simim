@@ -169,19 +169,8 @@ def simim(params):
     min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
     dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
 
-    # # take the diagonal to get some totals
-    # data is repeated for each origin or destination hence the extra divisor
-    # mean_pop_density = diag.O_PEOPLE.sum() / diag.O_AREA_KM2.sum()
-    # mean_hh_density = diag.HOUSEHOLDS.sum() / diag.D_AREA_KM2.sum()
-    # mean_hh_size = diag.D_PEOPLE.sum() / diag.HOUSEHOLDS.sum()
-    # mean_job_density = diag.JOBS.sum() / diag.D_AREA_KM2.sum()
-    # dataset["PEOPLE_DENSITY_DEV"] = dataset.O_PEOPLE / (dataset.O_AREA_KM2 * mean_pop_density)
-    # dataset["HOUSEHOLDS_DENSITY_DEV"] = dataset.HOUSEHOLDS / (dataset.D_AREA_KM2 * mean_hh_density)
-    # dataset["HOUSEHOLDS_SIZE_DEV"] = dataset.HOUSEHOLDS / (dataset.D_PEOPLE * mean_hh_size)
-    # dataset["JOB_DENSITY_DEV"] = dataset.JOBS / (dataset.D_AREA_KM2 * mean_job_density)
-
-    # diag = dataset[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE]
-    # print(diag.head())
+    # scale up migrations to full population?
+    dataset.loc[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE, "MIGRATIONS"] = dataset[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE].MIGRATIONS * 50
 
     # save dataset for testing
     #dataset.to_csv("./tests/data/testdata.csv", index=False)
