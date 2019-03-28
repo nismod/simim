@@ -49,23 +49,23 @@ class Model:
                           self.dataset[self.cost_col].values, self.model_subtype)
     elif self.model_type == "production":
       assert(self.num_emit == 1)
-      self.num_emit = len(self.dataset[self.xo_cols].unique()) - 1
+      self.num_emit = len(self.dataset[self.xo_cols[0]].unique()) - 1
       self.impl = Production(self.dataset[self.y_col].values, 
                              self.dataset[self.xo_cols].values, 
                              self.dataset[self.xd_cols].values, 
                              self.dataset[self.cost_col].values, self.model_subtype)
     elif self.model_type == "attraction":
       assert(self.num_attr == 1)
-      self.num_attr = len(self.dataset[self.xd_cols].unique()) - 1
+      self.num_attr = len(self.dataset[self.xd_cols[0]].unique()) - 1
       self.impl = Attraction(self.dataset[self.y_col].values, 
                              self.dataset[self.xd_cols].values, 
                              self.dataset[self.xo_cols].values, 
                              self.dataset[self.cost_col].values, self.model_subtype)
     else: #model_type == "doubly":
       assert(self.num_emit == 1)
-      self.num_emit = len(self.dataset[self.xo_cols].unique()) - 1
+      self.num_emit = len(self.dataset[self.xo_cols[0]].unique()) - 1
       assert(self.num_attr == 1)
-      self.num_attr = len(self.dataset[self.xd_cols].unique()) - 1
+      self.num_attr = len(self.dataset[self.xd_cols[0]].unique()) - 1
       raise NotImplementedError("Doubly constrained model is too constrained")
       self.impl = Doubly(self.dataset[self.y_col].values, 
                          self.dataset[self.xo_cols].values, 

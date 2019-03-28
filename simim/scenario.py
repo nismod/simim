@@ -61,7 +61,9 @@ class Scenario():
     dataset = dataset.merge(self.current_scenario.drop(self.factors, axis=1), how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
       .drop(["GEOGRAPHY_CODE", "YEAR"], axis=1).fillna(0)
     for factor in self.factors:
-      dataset["CHANGED_" + factor] = dataset[factor] + dataset["CUM_" + factor]
-    
+      # skip constrained
+      if factor != "O_GEOGRAPHY_CODE" and factor != "D_GEOGRAPHY_CODE":
+        dataset["CHANGED_" + factor] = dataset[factor] + dataset["CUM_" + factor]
+
     return dataset
 

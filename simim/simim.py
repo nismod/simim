@@ -34,6 +34,12 @@ def simim(params):
 
   # Differentiate between origin and destination values
   # This allows use of e.g. derived values (e.g. population density) to be both an emitter and an attractor. Absolute values cannot (->singular matrix)
+  # enure arrays
+  if isinstance(params["emitters"], str):
+    params["emitters"] = [params["emitters"]]
+  if isinstance(params["attractors"], str):
+    params["attractors"] = [params["attractors"]]
+
   params["emitters"] = [ORIGIN_PREFIX + e for e in params["emitters"]]
   params["attractors"] = [DESTINATION_PREFIX + e for e in params["attractors"]]
 

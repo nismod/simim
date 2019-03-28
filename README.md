@@ -57,6 +57,22 @@ And scenarios here:
 - Other emissiveness/attractiveness factors as necessary
 - **Specific modifications to the some or all of the above that describe a specific infrastructure scenario.**
 
+### Installation
+
+[only tested on ubuntu 18.04LTS]
+
+First non-python deps can be installed thus:
+```
+$ sudo apt install proj-bin libproj-dev libgeos-3.6.2 libgeos-dev python3-tk
+```
+(NB travis installs gdal-bin, libgdal-dev, libproj-dev  OS is 16.04)
+Then (use of virtualenv recommended),
+```
+$ pip install -r requirements.txt
+$ ./setup.py install
+$ ./setup.py test
+```
+
 # References
 [1] National Infrastructure Commission, 2017, [Growth Arc – Completed Study](https://www.nic.org.uk/our-work/growth-arc/)
 

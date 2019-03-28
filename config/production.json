@@ -3,7 +3,7 @@
   "model_type": "production",
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
-  "emitters": "O_GEOGRAPHY_CODE",
+  "emitters": "GEOGRAPHY_CODE",
   "attractors": "HOUSEHOLDS",
   "cost": "DISTANCE",
   "base_projection": "ppp",
