@@ -47,7 +47,6 @@ def simim(params):
 
   input_data = data_apis.Instance(params)
 
-
   if params["base_projection"] != "ppp":
     raise NotImplementedError("TODO variant projections...")
 
@@ -109,6 +108,14 @@ def simim(params):
           '95II', '95NN', '95AA', '95RR', '95MM', '95LL', '95FF', '95BB', '95SS', '95HH',
           '95EE', '95PP', '95UU', '95WW', '95KK', '95JJ']
     od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isin(ni)) & (~od_2011.D_GEOGRAPHY_CODE.isin(ni))]
+
+  # get no of people who moved (by origin) for each LAD - for later use as a scaling factor for migrations
+  movers = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE"]].groupby("O_GEOGRAPHY_CODE").sum()
+  movers = input_data.get_people(2011, geogs).set_index("GEOGRAPHY_CODE").join(movers)
+  movers["MIGRATION_RATE"] = movers["MIGRATIONS"] / movers["PEOPLE"]
+
+  print("Overall migration rate is %1.2f%%" % (100 * movers["MIGRATIONS"].sum() / movers["PEOPLE"].sum()))
+
 
   timeline = scenario_data.timeline()
 
@@ -176,7 +183,7 @@ def simim(params):
     dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
 
     # scale up migrations to full population?
-    dataset.loc[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE, "MIGRATIONS"] = dataset[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE].MIGRATIONS * 50
+    #dataset.loc[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE, "MIGRATIONS"] = dataset[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE].MIGRATIONS * 50
 
     # save dataset for testing
     #dataset.to_csv("./tests/data/testdata.csv", index=False)

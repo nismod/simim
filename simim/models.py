@@ -33,8 +33,8 @@ class Model:
     self.dataset = dataset.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"])#.reset_index()
 
     self.y_col = y_col
-    self.xo_cols = xo_cols
-    self.xd_cols = xd_cols
+    self.xo_cols = [xo_cols] if isinstance(xo_cols, str) else xo_cols
+    self.xd_cols = [xd_cols] if isinstance(xd_cols, str) else xd_cols
     self.cost_col = cost_col
 
     # slightly complicated to compute indices for mu and alpha from params
