@@ -116,7 +116,6 @@ def simim(params):
 
   print("Overall migration rate is %1.2f%%" % (100 * movers["MIGRATIONS"].sum() / movers["PEOPLE"].sum()))
 
-
   timeline = scenario_data.timeline()
 
   # # ensure base dataset is sorted so that the mu/alphas for the constrained models are interpreted correctly
@@ -229,6 +228,11 @@ def simim(params):
     delta = pd.DataFrame({"o_lad16cd": model.dataset.O_GEOGRAPHY_CODE,
                           "d_lad16cd": model.dataset.D_GEOGRAPHY_CODE,
                           "delta": -model.dataset.CHANGED_MIGRATIONS + model.dataset.MODEL_MIGRATIONS})
+    # upscale delta by mover percentage at origin
+    delta = pd.merge(delta, movers, left_on="o_lad16cd", right_index=True) 
+    delta["delta"] = delta["delta"] / delta["MIGRATION_RATE"]
+    delta = delta.drop(["PEOPLE", "MIGRATIONS", "MIGRATION_RATE"], axis=1)
+    
     # remove in-LAD migrations and sun
     o_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
     d_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
