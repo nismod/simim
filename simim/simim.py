@@ -116,8 +116,6 @@ def simim(params):
 
   print("Overall migration rate is %1.2f%%" % (100 * movers["MIGRATIONS"].sum() / movers["PEOPLE"].sum()))
 
-  timeline = scenario_data.timeline()
-
   # # ensure base dataset is sorted so that the mu/alphas for the constrained models are interpreted correctly
   # od_2011.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"], inplace=True)
 
@@ -127,8 +125,8 @@ def simim(params):
   if start_year > scenario_data.timeline()[0]:
     raise RuntimeError("start year for model run cannot be after start year of scenario")
 
-  # loop from snpp start to scenario start
-  for year in range(start_year, timeline[0] + 1):
+  # loop from snpp start to just before scenario start
+  for year in range(start_year, scenario_data.timeline()[0]):
     snpp = input_data.get_people(year, geogs)
     # pre-secenario the custom variant is same as the base projection
     snpp["PEOPLE_" + params["base_projection"]] = snpp.PEOPLE
