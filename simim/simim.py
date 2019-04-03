@@ -81,8 +81,6 @@ def simim(params):
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E09000001") & (od_2011.D_GEOGRAPHY_CODE != "E09000001")]
   od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E06000053") & (od_2011.D_GEOGRAPHY_CODE != "E06000053")]
 
-  geogs = od_2011.O_GEOGRAPHY_CODE.unique()
-
   # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
 
@@ -108,6 +106,8 @@ def simim(params):
           '95II', '95NN', '95AA', '95RR', '95MM', '95LL', '95FF', '95BB', '95SS', '95HH',
           '95EE', '95PP', '95UU', '95WW', '95KK', '95JJ']
     od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isin(ni)) & (~od_2011.D_GEOGRAPHY_CODE.isin(ni))]
+
+  geogs = od_2011.O_GEOGRAPHY_CODE.unique()
 
   # get no of people who moved (by origin) for each LAD - for later use as a scaling factor for migrations
   movers = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE"]].groupby("O_GEOGRAPHY_CODE").sum()
