@@ -126,16 +126,19 @@ class Instance():
 
   def get_households(self, year, geogs): 
 
-    if year <= self.snhp.max_year():
-      # aggregate census-merged LADs 'E06000053' 'E09000001'
+    # assumes all geogs have same max_year
+    max_year= self.snhp.max_year(geogs[0])
+
+    if year <= max_year:
       snhp = self.snhp.aggregate(geogs, year).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
     else:
-      snhp = snhp.aggregate(lads["geo_code"], self.snhp.max_year()-1).merge(snhp.aggregate(lads["geo_code"], self.snhp.max_year()), 
+      snhp = snhp.aggregate(lads["geo_code"], max_year-1).merge(snhp.aggregate(lads["geo_code"], max_year), 
         left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
-      snhp["OBS_VALUE"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (year - self.snhp.max_year()))
+      snhp["OBS_VALUE"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (year - max_year)
       snhp["PROJECTED_YEAR_NAME"] = year
       snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
 
+    # aggregate census-merged LADs 'E06000053' 'E09000001'
     snhp.loc[snhp.GEOGRAPHY_CODE=="E09000033", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].HOUSEHOLDS.sum()
     snhp.loc[snhp.GEOGRAPHY_CODE=="E06000052", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].HOUSEHOLDS.sum()
 
