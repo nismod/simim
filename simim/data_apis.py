@@ -76,20 +76,30 @@ class Instance():
     return od
 
   def get_people(self, year, geogs):
-    # TODO variants...
-    if year <= MYEData.MYEData.MAX_YEAR:
-      data = self.mye.aggregate(["GENDER", "C_AGE"], geogs, year)
-    else:
-      data = self.snpp.aggregate(["GENDER", "C_AGE"], geogs, year)
 
-    # TODO: extrapolated SNPP
-    #  raise NotImplementedError("TODO auto-extrapolate SNPP...")
+    if isinstance(geogs, str):
+      geogs = [geogs]
 
-    data = data.rename({"OBS_VALUE": "PEOPLE"}, axis=1).drop("PROJECTED_YEAR_NAME", axis=1)
+    geogs = ukpoputils.split_by_country(geogs)
+    
+    alldata = pd.DataFrame()
+    for country in geogs:
+      # TODO variants...
+      if not geogs[country]: continue
+      if year < self.snpp.min_year(country):
+        data = self.mye.aggregate(["GENDER", "C_AGE"], geogs[country], year)
+      elif year <= self.snpp.max_year(country):
+        data = self.snpp.aggregate(["GENDER", "C_AGE"], geogs[country], year)
+      else:
+        print("%d population for %s is extrapolated" % (year, country))
+        data = self.snpp.extrapolagg(["GENDER", "C_AGE"], self.npp, geogs[country], year)
+      alldata = alldata.append(data, ignore_index=True, sort=False)
+
+    alldata = alldata.rename({"OBS_VALUE": "PEOPLE"}, axis=1).drop("PROJECTED_YEAR_NAME", axis=1)
 
     # print(data.head())
     # print(len(data))
-    return data
+    return alldata
 
   # this is 2011 census data
   def get_households2011(self, geogs):
@@ -126,23 +136,31 @@ class Instance():
 
   def get_households(self, year, geogs): 
 
-    # assumes all geogs have same max_year
-    max_year= self.snhp.max_year(geogs[0])
+    geogs = ukpoputils.split_by_country(geogs)
 
-    if year <= max_year:
-      snhp = self.snhp.aggregate(geogs, year).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
-    else:
-      snhp = snhp.aggregate(lads["geo_code"], max_year-1).merge(snhp.aggregate(lads["geo_code"], max_year), 
-        left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
-      snhp["OBS_VALUE"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (year - max_year)
-      snhp["PROJECTED_YEAR_NAME"] = year
-      snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
+    allsnhp = pd.DataFrame()
 
-    # aggregate census-merged LADs 'E06000053' 'E09000001'
-    snhp.loc[snhp.GEOGRAPHY_CODE=="E09000033", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].HOUSEHOLDS.sum()
-    snhp.loc[snhp.GEOGRAPHY_CODE=="E06000052", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].HOUSEHOLDS.sum()
+    for country in geogs:
+      if not geogs[country]: continue
+      max_year= self.snhp.max_year(country)
 
-    return snhp
+      if year <= max_year:
+        snhp = self.snhp.aggregate(geogs[country], year).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
+      else:
+        print("%d households for %s is extrapolated" % (year, country))
+        #print(self.snhp.aggregate(geogs[country], max_year))
+        snhp = self.snhp.aggregate(geogs[country], max_year-1).merge(self.snhp.aggregate(geogs[country], max_year), 
+          left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
+        snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (year - max_year)
+        snhp["PROJECTED_YEAR_NAME"] = year
+        snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
+
+      # aggregate census-merged LADs 'E06000053' 'E09000001'
+      snhp.loc[snhp.GEOGRAPHY_CODE=="E09000033", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].HOUSEHOLDS.sum()
+      snhp.loc[snhp.GEOGRAPHY_CODE=="E06000052", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].HOUSEHOLDS.sum()
+      allsnhp = allsnhp.append(snhp, ignore_index=True, sort=False)
+
+    return allsnhp
 
   def get_jobs(self, year, geogs):
     """

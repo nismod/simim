@@ -137,8 +137,7 @@ def simim(params):
   model = None
 
   # use end year if defined in config, otherwise default to SNPP end year (up to 2039 due to Wales SNPP still being 2014-based)
-  end_year = params.get("end_year", input_data.snpp.max_year("en") - 2)
-
+  end_year = params.get("end_year", input_data.snpp.max_year("en"))
   if end_year < scenario_data.timeline()[0]:
     raise RuntimeError("end year for model run cannot be before start year of scenario")
 
@@ -186,7 +185,10 @@ def simim(params):
     #dataset.to_csv("./tests/data/testdata.csv", index=False)
     #break
     # check no bad values
-    assert len(dataset[dataset.isnull().any(axis=1)]) == 0
+    if len(dataset[dataset.isnull().any(axis=1)]) > 0:
+      dataset.to_csv("dataset.csv")
+    assert len(dataset[dataset.isnull().any(axis=1)]) == 0, "Missing/invalid values in model dataset, dumping to dataset.csv and aborting"
+
 
     model = models.Model(params["model_type"],
                          params["model_subtype"],

@@ -33,7 +33,7 @@ def main(params):
   data.write_output()
 
   # visualise
-  year = data.snpp.max_year("en") - 1
+  year = params.get("end_year", data.snpp.max_year("en"))
   if params["graphics"]:
     # fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
     v = visuals.Visual(2,3)
