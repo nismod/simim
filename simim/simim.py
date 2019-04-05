@@ -112,7 +112,7 @@ def simim(params):
   # get no of people who moved (by origin) for each LAD - for later use as a scaling factor for migrations
   movers = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE"]].groupby("O_GEOGRAPHY_CODE").sum()
   movers = input_data.get_people(2011, geogs).set_index("GEOGRAPHY_CODE").join(movers)
-  movers["MIGRATION_RATE"] = movers["MIGRATIONS"] / movers["PEOPLE"]
+  movers["MIGRATION_RATE"] = 1.0 #movers["MIGRATIONS"] / movers["PEOPLE"]
 
   print("Overall migration rate is %1.2f%%" % (100 * movers["MIGRATIONS"].sum() / movers["PEOPLE"].sum()))
 
