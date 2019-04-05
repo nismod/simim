@@ -237,7 +237,7 @@ class Instance():
       self.shapefile = gpd.read_file(os.path.join(self.cache_dir, shapefile))
     return self.shapefile
 
-  def get_lad_lookup(self):
+  def get_lad_lookup(self): 
 
     lookup = pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
     # only need the CMLAD->LAD mapping
@@ -246,6 +246,15 @@ class Instance():
   def append_output(self, dataset, year):
     dataset["PROJECTED_YEAR_NAME"] = year
     self.custom_snpp_variant = self.custom_snpp_variant.append(dataset, ignore_index=True, sort=False)
+
+  def summarise_output(self, scenario_geogs):
+    horizon = self.custom_snpp_variant.PROJECTED_YEAR_NAME.unique().max()
+    print("Summary at horizon year: %d" % horizon)
+    print(self.custom_snpp_variant[(self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon)
+                                 & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario_geogs))])
+
+
+    print(self.custom_snpp_variant.nsmallest(10, "net_delta"))
 
   def write_output(self):
     self.custom_snpp_variant.to_csv(self.output_file, index=False)

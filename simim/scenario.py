@@ -15,6 +15,7 @@ class Scenario():
     print("Available factors:", factors)
     print("Scenario factors:", [f for f in self.data.columns.values if not f.startswith("CUM_") and f not in ["GEOGRAPHY_CODE", "YEAR"]])
     print("Scenario timeline:", self.timeline())
+    print("Scenario geographies:", self.geographies())
 
     # add columns for factors not in scenario
     # TODO is this actually necessary?
@@ -36,6 +37,9 @@ class Scenario():
 
   def timeline(self):
     return sorted(self.data.YEAR.unique())
+
+  def geographies(self):
+    return sorted(self.data.GEOGRAPHY_CODE.unique())
 
   def update(self, year):
     """ Returns new scenario if there is data for the given year, otherwise returns the current (cumulative) scenario """

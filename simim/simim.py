@@ -147,7 +147,7 @@ def simim(params):
     if "PEOPLE_" + params["base_projection"] in snpp:
       snpp.drop("PEOPLE_" + params["base_projection"], axis=1, inplace=True)
     snpp = input_data.get_people(year, geogs).merge(snpp, on="GEOGRAPHY_CODE", suffixes=("_" + params["base_projection"], "_prev"))
-    snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) * (snpp["PEOPLE_" + params["base_projection"]] / snpp.PEOPLE_prev)
+    snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) #* (snpp["PEOPLE_" + params["base_projection"]] / snpp.PEOPLE_prev)
     snpp.drop(["PEOPLE_prev", "net_delta", "PROJECTED_YEAR_NAME"], axis=1, inplace=True)
 
     snhp = input_data.get_households(year, geogs)
@@ -205,12 +205,15 @@ def simim(params):
     # check recalculation matches the fitted values
     assert np.allclose(model.impl.yhat, model(emitter_values, attractor_values))
 
+    # print some model params
     print("%d data %s/%s Poisson fit:\nR2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
     print("k =", model.k())
-    print("       ", params["emitters"])
-    print("mu    =", *model.mu())
-    print("       ", params["attractors"])
-    print("alpha =", *model.alpha())
+    if params["model_type"] == "gravity" or params["model_type"] == "attraction":
+      print("       ", params["emitters"])
+      print("mu    =", *model.mu())
+    if params["model_type"] == "gravity" or params["model_type"] == "production":
+      print("       ", params["attractors"])
+      print("alpha =", *model.alpha())
     print("beta = %f" % model.beta())
 
     # apply scenario to dataset
@@ -245,5 +248,7 @@ def simim(params):
     input_data.append_output(snpp, year)
 
     #break
+
+  input_data.summarise_output(scenario_data.geographies())
 
   return model, input_data, delta
