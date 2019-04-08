@@ -247,12 +247,12 @@ class Instance():
     dataset["PROJECTED_YEAR_NAME"] = year
     self.custom_snpp_variant = self.custom_snpp_variant.append(dataset, ignore_index=True, sort=False)
 
-  def summarise_output(self, scenario_geogs):
+  def summarise_output(self, scenario):
     horizon = self.custom_snpp_variant.PROJECTED_YEAR_NAME.unique().max()
     print("Summary at horizon year: %d" % horizon)
     print("In-region population changes:")
     inreg = self.custom_snpp_variant[(self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon)
-                                 & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario_geogs))].drop("net_delta", axis=1) 
+                                 & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario.geographies()))].drop("net_delta", axis=1) 
     print("TOTAL: %.0f baseline vs %.0f scenario (increase of %.0f)"
       % (inreg.PEOPLE_ppp.sum(), inreg.PEOPLE.sum(), inreg.PEOPLE.sum() - inreg.PEOPLE_ppp.sum()))
     print(inreg)

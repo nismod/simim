@@ -57,6 +57,32 @@ And scenarios here:
 - Other emissiveness/attractiveness factors as necessary
 - **Specific modifications to the some or all of the above that describe a specific infrastructure scenario.**
 
+### Scenarios
+
+All scenarios a defined as variations to the baseline household and/or population projections. Thus a value of 100 households for a particular represents an increase of 100 new households spaces over the current estimate for that year. 
+
+#### Scenario 1: Five new towns
+
+Over the period 2020-2050, the net addition of existing household spaces it reduced to 70% of the projection. The deficit, plus an extra 20000 household spaces, is allocated annually to five new towns in the following Local Authority Districts: Aylesbury Vale (2), Central Bedfordshire, South Cambridgeshire, Huntingdonshire.
+
+Population change:
+
+#### Scenario 2: Expansion
+
+In this scenario, over the period 2020-2050 some existing settlements are expanded over and above the baseline household projection. All other areas follow the projection. The annual extra ~20000 household spaces are allocated as follows: 
+
+| LAD(s)                           | Allocation |
+| -------------------------------- | ---------- |
+| Oxford, Milton Keynes, Cambridge | 25%        |
+| Bedford                          | 10%        |
+| Northamption, Luton, Stevenage   | 5%         |
+
+##### Scenario 1 and 2 "J" Variant
+
+These variants add jobs as a second attractiveness factor, exactly in line with the placement of household spaces with a ratio of 1 job per household space. 
+
+Whilst an increase in a household space will by definition increase migration to the LAD in which they are build, employment is more complex as people can work in a place different to where they live, especially if there are good transport links. A spatial interaction model should not use "jobs in LAD" as an attractor, rather a broader measure of the accessibility of jobs in that LAD (or, ideally, smaller geography)
+
 ### Installation
 
 [only tested on ubuntu 18.04LTS]
@@ -66,12 +92,14 @@ First non-python deps can be installed thus:
 $ sudo apt install proj-bin libproj-dev libgeos-3.6.2 libgeos-dev python3-tk
 ```
 (NB travis installs gdal-bin, libgdal-dev, libproj-dev  OS is 16.04)
-Then (use of virtualenv recommended),
+Then (use of virtualenv* recommended),
 ```
 $ pip install -r requirements.txt
 $ ./setup.py install
 $ ./setup.py test
 ```
+
+&ast; conda wil be supported at some point (it may already work but hasn't been tested)
 
 # References
 [1] National Infrastructure Commission, 2017, [Growth Arc – Completed Study](https://www.nic.org.uk/our-work/growth-arc/)
