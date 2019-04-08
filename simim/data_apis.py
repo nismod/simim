@@ -250,11 +250,16 @@ class Instance():
   def summarise_output(self, scenario_geogs):
     horizon = self.custom_snpp_variant.PROJECTED_YEAR_NAME.unique().max()
     print("Summary at horizon year: %d" % horizon)
-    print(self.custom_snpp_variant[(self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon)
-                                 & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario_geogs))])
+    print("In-region population changes:")
+    inreg = self.custom_snpp_variant[(self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon)
+                                 & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario_geogs))].drop("net_delta", axis=1) 
+    print("TOTAL: %.0f baseline vs %.0f scenario (increase of %.0f)"
+      % (inreg.PEOPLE_ppp.sum(), inreg.PEOPLE.sum(), inreg.PEOPLE.sum() - inreg.PEOPLE_ppp.sum()))
+    print(inreg)
 
-
-    print(self.custom_snpp_variant.nsmallest(10, "net_delta"))
+    print("10 largest migration origins:")
+    print(self.custom_snpp_variant[self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon]
+                            .nsmallest(10, "net_delta").drop("net_delta", axis=1))
 
   def write_output(self):
     self.custom_snpp_variant.to_csv(self.output_file, index=False)
