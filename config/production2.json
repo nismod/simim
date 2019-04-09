@@ -9,7 +9,7 @@
   "base_projection": "ppp",
   "scenario_dir": "./data/scenarios",
   "scenario": "scenario2.csv",
-  "end_year": 2039,
+  "end_year": 2050,
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data/output",
   "graphics": true
