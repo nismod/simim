@@ -1,5 +1,6 @@
 """ visuals.py """
 
+import numpy as np
 from geopandas.plotting import plot_polygon_collection
 import matplotlib.pyplot as plt
 
@@ -29,6 +30,24 @@ class Visual:
     # if "label" in kwargs:
     #   ax.legend()
     ax.plot(x, y, marker, **kwargs)
+
+  def stacked_bar(self, panel, alldata, category_name, xaxis_name, yaxis_name):
+
+    categories = alldata[category_name].unique()
+    bottom = np.zeros(len(alldata.PROJECTED_YEAR_NAME.unique()))
+
+    series = []
+    for cat in categories:
+      x = alldata[alldata.GEOGRAPHY_CODE == cat].PROJECTED_YEAR_NAME.values
+      y = alldata[alldata.GEOGRAPHY_CODE == cat].PEOPLE.values
+      series.append(plt.bar(x, y, bottom=bottom))
+      bottom += y
+
+    plt.xlabel("Year")
+    plt.ylabel("Population")
+    plt.legend([p[0] for p in series], categories)
+    plt.show()
+
 
   def scatter(self, panel, x, y, marker, title=None, **kwargs):
     ax = self.panel(panel)
