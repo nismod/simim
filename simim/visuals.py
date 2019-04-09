@@ -16,7 +16,12 @@ class Visual:
     # deal with non-array case
     if self.rows == 1 and self.cols == 1:
       return self.axes
-    return self.axes[index]
+    elif self.rows == 1:
+      return self.axes[index[1]]
+    elif self.cols == 1:
+      return self.axes[index[0]]
+    else:
+      return self.axes[index]
 
   # TODO legend not working
   def line(self, panel, x, y, marker, title=None, xlabel=None, ylabel=None, **kwargs):
@@ -31,22 +36,23 @@ class Visual:
     #   ax.legend()
     ax.plot(x, y, marker, **kwargs)
 
-  def stacked_bar(self, panel, alldata, category_name, xaxis_name, yaxis_name):
+  def stacked_bar(self, panel, alldata, category_name, xaxis_name, yaxis_name, title=None, xlabel=None, ylabel=None, **kwargs):
 
     categories = alldata[category_name].unique()
-    bottom = np.zeros(len(alldata.PROJECTED_YEAR_NAME.unique()))
+    bottom = np.zeros(len(alldata[xaxis_name].unique()))
 
+    ax = self.panel(panel)
     series = []
     for cat in categories:
-      x = alldata[alldata.GEOGRAPHY_CODE == cat].PROJECTED_YEAR_NAME.values
-      y = alldata[alldata.GEOGRAPHY_CODE == cat].PEOPLE.values
-      series.append(plt.bar(x, y, bottom=bottom))
+      x = alldata[alldata[category_name] == cat][xaxis_name].values
+      y = alldata[alldata[category_name] == cat][yaxis_name].values
+      series.append(ax.bar(x, y, bottom=bottom))
       bottom += y
 
-    plt.xlabel("Year")
-    plt.ylabel("Population")
-    plt.legend([p[0] for p in series], categories)
-    plt.show()
+    ax.set_xlabel(xlabel if xlabel is not None else xaxis_name)
+    ax.set_ylabel(ylabel if ylabel is not None else yaxis_name)
+    ax.legend([p[0] for p in series], categories)
+    #plt.show()
 
 
   def scatter(self, panel, x, y, marker, title=None, **kwargs):

@@ -27,14 +27,20 @@ def main():
 
   scale = "gb"
 
-  v = visuals.Visual(1,2)
+  v = visuals.Visual(1, 2)
+
+  #v.line((0, 0), list(range(10)), list(range(10)), "x")
 
   lads = pd.read_csv("data/scenarios/camkox_lads.csv")["geo_code"]
 
   data = pd.read_csv("data/output/simim_production_ppp_scenario2.csv")
   data = data[data.GEOGRAPHY_CODE.isin(lads)]
 
-  v.stacked_bar((0, 0), data, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE")
+  v.stacked_bar((0, 0), data, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE_ppp")
+  v.panel((0,0)).set_ylim([0,7000000])
+  v.stacked_bar((0, 1), data, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE")
+  v.panel((0,1)).set_ylim([0,7000000])
+  v.show()
 
 if __name__ == "__main__":
   main()
