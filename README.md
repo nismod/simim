@@ -3,7 +3,7 @@
 
 ** **work-in-progress** **
 
-### Introduction
+# Introduction
 
 This package aims to build a flexible custom population projection generation tool based on spatial interaction models of internal migration within the UK (probably GB only). The tool is intended to be used to model the impact of large and long-term infrastructure changes on population distribution and growth.
 
@@ -21,12 +21,12 @@ Note that although all the base models are constrained to the total number of mi
 
 The primary case study for this work will be the proposed east-west arc [[1]](#references) (a.k.a. Cambridge-Milton Keynes-Oxford corridor).
 
-### Caveats
+## Caveats
 - the model can only be as good as the input data - not all input datasets are recent. The latest know dataset that captures intra-LAD migrations (which may become inter- under some scenario) is the 2011 census.  
 - the model assumptions are quite simplistic, although inclusion of multiple emission/attraction factors can help.
 - the methodology cannot capture changes in fertility, mortality and international migration that a scenario might be expected to affect.
 
-### Example
+# Example
 
 ![Example fits](doc/img/sim_basic.png)
 _Figure 1. Illustrative example of a production-constrained fit to internal migration, population and household count data by LAD.  The axes in the scatterplot are number of migrations (x actual, y model). The line plot is the total population of Oxford (LAD) - baseline projection (black) and scenario-modified projection (red). The map shows where the changed migration reduces the population (blue) and increases it (red). The OD matrix delta here is the difference in the model computed OD matrices with and without a scenario where jobs are created in the centres (Oxford, Milton Keynes, Cambridge) and household spaces are created across the CaMKOx corridor over the period 2020-2024._
@@ -49,7 +49,7 @@ And scenarios here:
 - [data/scenarios/scenario1.csv](data/scenarios/scenario1.csv)
 - [data/scenarios/scenario1.csv](data/scenarios/scenario2.csv)
 
-### Data Requirements
+# Data Requirements
 - ONS sub-national population projections
 - ONS sub-national housing projections
 - Employment and/or related data (e.g. GVA)
@@ -57,17 +57,60 @@ And scenarios here:
 - Other emissiveness/attractiveness factors as necessary
 - **Specific modifications to the some or all of the above that describe a specific infrastructure scenario.**
 
-### Scenarios
+# Scenarios
 
-All scenarios a defined as variations to the baseline household and/or population projections. Thus a value of 100 households for a particular represents an increase of 100 new households spaces over the current estimate for that year. 
+## Geography
 
-#### Scenario 1: Five new towns
+The scenarios described below apply to all or part of the "CaMKOx" region defined by the following LADs:
 
-Over the period 2020-2050, the net addition of existing household spaces it reduced to 70% of the projection. The deficit, plus an extra 20000 household spaces, is allocated annually to five new towns in the following Local Authority Districts: Aylesbury Vale (2), Central Bedfordshire, South Cambridgeshire, Huntingdonshire.
+| Code    | Name                   |
+| ------- | ---------------------- |
+|E07000008|Cambridge
+|E07000177|Cherwell
+|E07000099|North Hertfordshire
+|E06000055|Bedford
+|E06000056|Central Bedfordshire
+|E07000012|South Cambridgeshire
+|E06000032|Luton
+|E07000179|South Oxfordshire
+|E07000004|Aylesbury Vale
+|E07000180|Vale of White Horse
+|E07000181|West Oxfordshire
+|E07000155|South Northamptonshire
+|E06000042|Milton Keynes
+|E07000178|Oxford
+|E06000030|Swindon
+|E07000151|Daventry
+|E07000154|Northampton
+|E07000156|Wellingborough
+|E07000009|East Cambridgeshire
+|E07000242|East Hertfordshire
+|E07000011|Huntingdonshire
+|E07000243|Stevenage
 
-Population change:
+In the baseline (principal variant) projection, the population of this region grows from ~3.4M in 2016 to ~4.0M in 2050.
 
-#### Scenario 2: Expansion
+All scenarios are defined as variations to the baseline household and/or population projections. Thus a value of 100 households for a particular area and year represents an increase of 100 new households spaces _over and above_ the projection for that year. 
+
+## Scenario 1: Five new towns
+
+### Definition
+
+Over the period 2020-2050, the net addition of existing household spaces is reduced to 70% of the projection. The deficit, plus an extra 20000 household spaces, is allocated annually to five new towns in the following Local Authority Districts: Aylesbury Vale (2), Central Bedfordshire, South Cambridgeshire, Huntingdonshire.
+
+[dataset](data/scenarios/scenario1.csv)
+
+Population estimate (2050): 5.3M
+
+### Model Results
+
+Housing increase over projection (2050):
+
+Population (2050): 6.4M
+
+## Scenario 2: Expansion
+
+### Definition
 
 In this scenario, over the period 2020-2050 some existing settlements are expanded over and above the baseline household projection. All other areas follow the projection. The annual extra ~20000 household spaces are allocated as follows: 
 
@@ -77,13 +120,21 @@ In this scenario, over the period 2020-2050 some existing settlements are expand
 | Bedford                          | 10%        |
 | Northamption, Luton, Stevenage   | 5%         |
 
-##### Scenario 1 and 2 "J" Variant
+[dataset](data/scenarios/scenario2.csv)
+
+Population estimate (2050): 5.3M
+
+### Model Results
+
+Population (2050): 6.9M
+
+## Scenario 1 and 2 "J" Variant
 
 These variants add jobs as a second attractiveness factor, exactly in line with the placement of household spaces with a ratio of 1 job per household space. 
 
-Whilst an increase in a household space will by definition increase migration to the LAD in which they are build, employment is more complex as people can work in a place different to where they live, especially if there are good transport links. A spatial interaction model should not use "jobs in LAD" as an attractor, rather a broader measure of the accessibility of jobs in that LAD (or, ideally, smaller geography)
+Whilst an increase in a household space will by definition increase migration to the LAD in which they are build, employment is more complex as people can work in a place that is different to where they live, especially if there are good transport links. A spatial interaction model should not use "jobs in LAD" as an attractor, rather a broader measure of the accessibility of jobs in that LAD (or, ideally, smaller geography)
 
-### Installation
+# Installation
 
 [only tested on ubuntu 18.04LTS]
 
@@ -99,9 +150,9 @@ $ ./setup.py install
 $ ./setup.py test
 ```
 
-&ast; conda wil be supported at some point (it may already work but hasn't been tested)
+&ast; conda will be supported at some point (it may already work but hasn't been tested)
 
 # References
-[1] National Infrastructure Commission, 2017, [Growth Arc – Completed Study](https://www.nic.org.uk/our-work/growth-arc/)
+[1] National Infrastructure Commission, 2017, [Growth Arc - Completed Study](https://www.nic.org.uk/our-work/growth-arc/)
 
 [2] Oshan, T (2016), [_A primer for working with the Spatial Interaction modeling (SpInt) module in the python spatial analysis library (PySAL)_](http://openjournals.wu.ac.at/region/paper_175/175.html) 
