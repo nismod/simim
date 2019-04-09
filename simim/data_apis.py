@@ -126,7 +126,7 @@ class Instance():
     #print(len(households))
 
     if "ni" in self.coverage:
-      households_ni = census_ni.get_data("KS105NI", "N92000002", "LAD", category_filters={"KS105NI_0_CODE": 0}).drop("KS105NI_0_CODE", axis=1)
+      households_ni = self.census_ni.get_data("KS105NI", "N92000002", "LAD", category_filters={"KS105NI_0_CODE": 0}).drop("KS105NI_0_CODE", axis=1)
       # print(households_ni)
       # print(len(households_ni))
       households = households.append(households_ni)
@@ -247,12 +247,15 @@ class Instance():
     dataset["PROJECTED_YEAR_NAME"] = year
     self.custom_snpp_variant = self.custom_snpp_variant.append(dataset, ignore_index=True, sort=False)
 
-  def summarise_output(self, scenario_geogs):
+  def summarise_output(self, scenario):
     horizon = self.custom_snpp_variant.PROJECTED_YEAR_NAME.unique().max()
+    scen_horizon = min(horizon, scenario.data.YEAR.max())
+    print("Cumulative scenario at %d" % scen_horizon)
+    print(scenario.data[scenario.data.YEAR == scen_horizon])
     print("Summary at horizon year: %d" % horizon)
     print("In-region population changes:")
     inreg = self.custom_snpp_variant[(self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon)
-                                 & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario_geogs))].drop("net_delta", axis=1) 
+                                   & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario.geographies()))].drop("net_delta", axis=1) 
     print("TOTAL: %.0f baseline vs %.0f scenario (increase of %.0f)"
       % (inreg.PEOPLE_ppp.sum(), inreg.PEOPLE.sum(), inreg.PEOPLE.sum() - inreg.PEOPLE_ppp.sum()))
     print(inreg)
