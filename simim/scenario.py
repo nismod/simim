@@ -10,6 +10,16 @@ class Scenario():
     self.data = pd.read_csv(filename)
     if isinstance(factors, str):
       factors = [factors]
+
+    print(self.data.columns)
+    # rename scenario cols with O_ or D_ prefixes as necessary
+    for column in [f for f in self.data.columns.values if not f.startswith("CUM_") and f not in ["GEOGRAPHY_CODE", "YEAR"]]:
+      if "O_" + column in factors:
+        self.data.rename({column: "O_" + column, "CUM_" + column: "CUM_O_" + column }, axis=1, inplace=True)
+      elif "D_" + column in factors:
+        self.data.rename({column: "D_" + column, "CUM_" + column: "CUM_D_" + column }, axis=1, inplace=True)
+    print(self.data.columns)
+    
     missing = [factor for factor in factors if factor not in self.data.columns] 
 
     print("Available factors:", factors)
@@ -51,7 +61,6 @@ class Scenario():
     else:
       print("Persisting existing scenario")
       return self.current_scenario
-
 
   def apply(self, dataset, year):
     # if no scenario for a year, reuse the most recent (cumulative) figures

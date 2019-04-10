@@ -14,9 +14,6 @@ import ukpopulation.utils as ukpoputils
 
 from simim.utils import get_named_values, calc_distances
 
-# ctrlads = ["E07000178", "E06000042", "E07000008"]
-# arclads = ["E07000181", "E07000180", "E07000177", "E07000179", "E07000004", "E06000032", "E06000055", "E06000056", "E07000011", "E07000012"]
-
 ORIGIN_PREFIX = "O_"
 DESTINATION_PREFIX = "D_"
 
@@ -51,7 +48,6 @@ def simim(params):
     raise NotImplementedError("TODO variant projections...")
 
   od_2011 = input_data.get_od()
-
 
   lad_lookup = input_data.get_lad_lookup()
 
@@ -104,7 +100,8 @@ def simim(params):
   # get no of people who moved (by origin) for each LAD - for later use as a scaling factor for migrations
   movers = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE"]].groupby("O_GEOGRAPHY_CODE").sum()
   movers = input_data.get_people(2011, geogs).set_index("GEOGRAPHY_CODE").join(movers)
-  movers["MIGRATION_RATE"] = 2 * movers["MIGRATIONS"] / movers["PEOPLE"]
+  # Fudge factor 
+  movers["MIGRATION_RATE"] = movers["MIGRATIONS"] / movers["PEOPLE"]
 
   print("Overall migration rate is %1.2f%%" % (100 * movers["MIGRATIONS"].sum() / movers["PEOPLE"].sum()))
 
@@ -139,7 +136,7 @@ def simim(params):
     if "PEOPLE_" + params["base_projection"] in snpp:
       snpp.drop("PEOPLE_" + params["base_projection"], axis=1, inplace=True)
     snpp = input_data.get_people(year, geogs).merge(snpp, on="GEOGRAPHY_CODE", suffixes=("_" + params["base_projection"], "_prev"))
-    snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) #* (snpp["PEOPLE_" + params["base_projection"]] / snpp.PEOPLE_prev)
+    snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) * (snpp["PEOPLE_" + params["base_projection"]] / snpp.PEOPLE_prev)
     snpp.drop(["PEOPLE_prev", "net_delta", "PROJECTED_YEAR_NAME"], axis=1, inplace=True)
 
     snhp = input_data.get_households(year, geogs)
@@ -212,6 +209,7 @@ def simim(params):
 
     changed_attractor_values = get_named_values(model.dataset, params["attractors"], prefix="CHANGED_")
     # emission factors aren't impacted by the (immediate) scenario
+    # TODO allow for scenarios on origin parameters
     emitter_values = get_named_values(model.dataset, params["emitters"], prefix="")
 
     # re-evaluate model and record changes
@@ -233,6 +231,9 @@ def simim(params):
     delta = o_delta.merge(d_delta)
     # compute net migration change
     delta["net_delta"] = delta.o_delta - delta.d_delta
+
+    #print(delta[delta["lad16cd"].isin(scenario_data.geographies())])
+    print("Change in migrations to scenario region: %.0f" % delta[delta["lad16cd"].isin(scenario_data.geographies())]["net_delta"].sum())
 
     # add to results
     snpp = snpp.merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)

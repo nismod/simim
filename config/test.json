@@ -1,7 +1,7 @@
 {
   "coverage": "GB",
   "model_type": "gravity",
-  "start_year": 2020,
+  "start_year": 2019,
   "end_year": 2020,
   "model_subtype": "pow",
   "observation": "MIGRATIONS",

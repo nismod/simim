@@ -28,8 +28,20 @@ The primary case study for this work will be the proposed east-west arc [[1]](#r
 
 # Example
 
+## Scenario
+
+New housing across the region, new jobs in the three centres (Oxford, Cambridge, Milton Keynes) over the period 2020-2024, result in e.g. about 10000 new household spaces and 50000 jobs in Oxford.
+
+The full scenario dataset is [here](data/scenarios/test.csv).
+
+## Results
+
 ![Example fits](doc/img/sim_basic.png)
 _Figure 1. Illustrative example of a production-constrained fit to internal migration, population and household count data by LAD.  The axes in the scatterplot are number of migrations (x actual, y model). The line plot is the total population of Oxford (LAD) - baseline projection (black) and scenario-modified projection (red). The map shows where the changed migration reduces the population (blue) and increases it (red). The OD matrix delta here is the difference in the model computed OD matrices with and without a scenario where jobs are created in the centres (Oxford, Milton Keynes, Cambridge) and household spaces are created across the CaMKOx corridor over the period 2020-2024._
+
+![Example population change](doc/img/sim_pops.png)
+_Figure 2. Stacked bar charts of the populations of the CaMKOx constituent LADs over the simulation timeline. The graph on the left shows the baseline subnational population projects whilst the graph on the right shows the impact of the scenario described above._
+
 
 The above models are still under development and more work needs to be done to choose the optimal emitter and attractor categories, use more up-to-date housing data, plus investigate different cost functions (currently a displaced Euclidean distance between LAD centroids). The changes in population from the model is much smaller than would be expected given the scenario applied.
 
@@ -39,7 +51,7 @@ To run this example, clone the project and run (from project root):
 $ ./setup.py install --user
 $ scripts/run.py -c config/gravity.json
 ```
-The example configuration files can be found [here](config/gravity.json) and scenario [here](data/scenarios/test.csv).
+The example configuration files can be found [here](config/gravity.json).
 
 # Data Requirements
 - ONS sub-national population projections
@@ -98,7 +110,7 @@ Population estimate (2050): 5.3M
 
 Housing increase over projection (2050):
 
-Population (2050): 6.4M
+Population (2050): 
 
 ## Scenario 2: Expansion
 
@@ -118,7 +130,7 @@ Population estimate (2050): 5.3M
 
 ### Model Results
 
-Population (2050): 6.9M
+Population (2050): 
 
 ## Scenario 1 and 2 "J" Variant
 
