@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/nismod/simim.png?branch=master)](https://travis-ci.org/nismod/simim) [![License](https://img.shields.io/github/license/mashape/apistatus.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://travis-ci.org/nismod/simim.png?branch=master)](https://travis-ci.org/nismod/simim) [![License](https://img.shields.io/github/license/mashape/apistatus.svg)](https://opensource.org/licenses/MIT) [![DOI](https://zenodo.org/badge/159637047.svg)](https://zenodo.org/badge/latestdoi/159637047)
 # simim - Spatial Interaction Models of Internal Migration
 
 ** **work-in-progress** **
@@ -45,13 +45,12 @@ _Figure 2. Stacked bar charts of the populations of the CaMKOx constituent LADs 
 
 The above models are still under development and more work needs to be done to choose the optimal emitter and attractor categories, use more up-to-date housing data, plus investigate different cost functions (currently a displaced Euclidean distance between LAD centroids). The changes in population from the model is much smaller than would be expected given the scenario applied.
 
-To run this example, clone the project and run (from project root):
+To run this example (see installation instructions below, then):
 
 ```bash
-$ ./setup.py install --user
-$ scripts/run.py -c config/gravity.json
+(.venv) $ scripts/run.py -c config/gravity.json
 ```
-The example configuration files can be found [here](config/gravity.json).
+The example configuration file can be found [here](config/gravity.json).
 
 # Data Requirements
 - ONS sub-national population projections
