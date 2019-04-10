@@ -52,18 +52,10 @@ def simim(params):
 
   od_2011 = input_data.get_od()
 
-  # # CMLAD codes...
-  # print("E06000048" in od_2011.USUAL_RESIDENCE_CODE.unique())
-  # print("E06000057" in od_2011.USUAL_RESIDENCE_CODE.unique())
-  # # TODO convert OD to non-CM LAD (more up to date migration data uses LAD)
-  # TODO need to remap old NI codes 95.. to N... ones
 
   lad_lookup = input_data.get_lad_lookup()
 
-  # TODO need to remap old NI codes 95.. to N... ones
-
   # only need the CMLAD->LAD mapping
-  #lad_lookup = lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
   od_2011 = od_2011.merge(lad_lookup, how='left', left_on="ADDRESS_ONE_YEAR_AGO_CODE", right_on="LAD_CM") \
     .rename({"LAD": ORIGIN_PREFIX + "GEOGRAPHY_CODE"}, axis=1).drop(["LAD_CM"], axis=1)
   od_2011 = od_2011.merge(lad_lookup, how='left', left_on="USUAL_RESIDENCE_CODE", right_on="LAD_CM") \
@@ -98,7 +90,7 @@ def simim(params):
   od_2011.loc[od_2011.O_GEOGRAPHY_CODE == od_2011.D_GEOGRAPHY_CODE, "DISTANCE"] = 1e-0
   #print(od_2011.head())
 
-  # TODO
+  # TODO need to remap old NI codes 95.. to N... ones
   # 26 LGDs -> 11 in 2014 with N09000... codes
   # see https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=2ahUKEwiXzuiWu5rfAhURCxoKHYH1A9YQFjAAegQIBRAC&url=http%3A%2F%2Fwww.ninis2.nisra.gov.uk%2FDownload%2FPopulation%2FBirths%2520to%2520Mothers%2520from%2520Outside%2520Northern%2520Ireland%2520%25202013%2520Provisional%2520(administrative%2520geographies).xlsx&usg=AOvVaw3ZI3EDJAJxtsFQVRMEX37C
   if ukpoputils.NI not in input_data.coverage:

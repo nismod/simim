@@ -169,8 +169,6 @@ class Instance():
     a job density of 1.0 would mean that there is one job for every resident of working age."
     """
 
-    warnings.warn("geogs argument to get_jobs is currently ignored")
-
     # http://www.nomisweb.co.uk/api/v01/dataset/NM_57_1.data.tsv?
     # geography=1879048193...1879048573,1879048583,1879048574...1879048582&
     # date=latest&
@@ -190,8 +188,7 @@ class Instance():
     jobs.loc[jobs.GEOGRAPHY_CODE=="E06000052", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].OBS_VALUE.sum()
     
     # TODO filter by geogs rather than hard-coding GB
-    jobs = jobs[~jobs.GEOGRAPHY_CODE.isin(['E06000053', 'E09000001', 'N09000001', 'N09000002', 'N09000003', 'N09000004', 'N09000005', 
-                                           'N09000006', 'N09000007', 'N09000008', 'N09000009', 'N09000010', 'N09000011'])]
+    jobs = jobs[jobs.GEOGRAPHY_CODE.isin(geogs)]
 
     jobs = jobs.set_index(["GEOGRAPHY_CODE", "ITEM_NAME"]).unstack(level=-1).reset_index()
     jobs.columns = jobs.columns.map("".join)

@@ -21,7 +21,6 @@ def get_named_values(dataset, colnames, prefix=""):
     return [dataset[prefix+colname] for colname in colnames]
 
 
-
 def get_data(local, remote):
   if os.path.isfile(local):
     data = pd.read_csv(local)
@@ -30,7 +29,6 @@ def get_data(local, remote):
     data.to_csv(local, index=False)
   return data
 
-# TODO split into matrix and table versions?
 def calc_distances(gdf):
   # for now makes assumptions about column names and units
   dists = pd.DataFrame(squareform(pdist(pd.DataFrame({"e": gdf.bng_e, "n": gdf.bng_n}))), columns=gdf.lad16cd.unique(), index=gdf.lad16cd.unique())

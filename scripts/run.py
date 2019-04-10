@@ -20,7 +20,7 @@ def main(params):
     # start timing
     start_time = time.time()
 
-    # TODO sort this mess 
+    # TODO reorganise the data returned 
     model, data, delta = simim.simim(params)
 
     print("done. Exec time(s): ", time.time() - start_time)
@@ -48,6 +48,7 @@ def main(params):
     c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == lad]
     v.line((0,1), c.PROJECTED_YEAR_NAME, c["PEOPLE_" + params["base_projection"]], "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (%s)" % lad)
     v.line((0,1), c.PROJECTED_YEAR_NAME, c.PEOPLE + c.net_delta, "r", label="scenario")
+    v.panel((0,1)).legend() #("b","r"), ("base", "scenario"))
 
     # TODO change in population...
     # v.polygons((0,2), gdf, xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="lightgrey")

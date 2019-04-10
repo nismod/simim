@@ -12,16 +12,11 @@ Take known migration data (OD matrix) and fit this function to the data
 Change the housing supply and evaluate the function -> modified OD matrix
 Apply modified OD matrix to existing population projection (principal or variant)
 """
-import os
+#import os
 import numpy as np
 import pandas as pd
-import geopandas 
 import matplotlib.pyplot as plt
-import contextily as ctx
-from simim.utils import get_config
-#import simim.data_apis as data_apis 
 import simim.visuals as visuals
-#from scipy.spatial.distance import squareform, pdist
 
 def main():
 
@@ -29,17 +24,25 @@ def main():
 
   v = visuals.Visual(1, 2)
 
-  #v.line((0, 0), list(range(10)), list(range(10)), "x")
-
-  lads = pd.read_csv("data/scenarios/camkox_lads.csv")["geo_code"]
-
   data = pd.read_csv("data/output/simim_production_ppp_scenario2.csv")
-  data = data[data.GEOGRAPHY_CODE.isin(lads)]
 
-  v.stacked_bar((0, 0), data, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE_ppp")
+  lads = pd.read_csv("data/scenarios/camkox_lads.csv").set_index("geo_code")
+
+  rdata = data[data.GEOGRAPHY_CODE.isin(lads.index)]
+
+  v.stacked_bar((0, 0), rdata, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE_ppp", 
+    title="Baseline Projection", xlabel="Year", ylabel="Population", category_mapping=lads)
   v.panel((0,0)).set_ylim([0,7000000])
-  v.stacked_bar((0, 1), data, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE")
+  v.stacked_bar((0, 1), rdata, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE", 
+    title="Scenario 2 Projection", xlabel="Year", ylabel="Population", category_mapping=lads)
   v.panel((0,1)).set_ylim([0,7000000])
+
+  # ldata = data[data.GEOGRAPHY_CODE.str.startswith("E09")]
+  # v.stacked_bar((0, 0), ldata, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE_ppp", title="Baseline Projection", xlabel="Year", ylabel="Population")
+  # #v.panel((0,0)).set_ylim([0,7000000])
+  # v.stacked_bar((0, 1), ldata, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE", title="Scenario 2 Projection", xlabel="Year", ylabel="Population")
+  # #v.panel((0,1)).set_ylim([0,7000000])
+
   v.show()
 
 if __name__ == "__main__":

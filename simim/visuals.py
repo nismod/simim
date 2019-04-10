@@ -23,7 +23,7 @@ class Visual:
     else:
       return self.axes[index]
 
-  # TODO legend not working
+  # add legend by calling panel(index).legend() once constructed
   def line(self, panel, x, y, marker, title=None, xlabel=None, ylabel=None, **kwargs):
     ax = self.panel(panel)
     if xlabel:
@@ -32,27 +32,30 @@ class Visual:
       ax.set_ylabel(ylabel)
     if title:
       ax.set_title(title)
-    # if "label" in kwargs:
-    #   ax.legend()
     ax.plot(x, y, marker, **kwargs)
 
-  def stacked_bar(self, panel, alldata, category_name, xaxis_name, yaxis_name, title=None, xlabel=None, ylabel=None, **kwargs):
+  def stacked_bar(self, panel, dataset, category_name, xaxis_name, yaxis_name, category_mapping=None, 
+                  title=None, xlabel=None, ylabel=None, **kwargs):
 
-    categories = alldata[category_name].unique()
-    bottom = np.zeros(len(alldata[xaxis_name].unique()))
+    categories = dataset[category_name].unique()
+    bottom = np.zeros(len(dataset[xaxis_name].unique()))
 
     ax = self.panel(panel)
     series = []
     for cat in categories:
-      x = alldata[alldata[category_name] == cat][xaxis_name].values
-      y = alldata[alldata[category_name] == cat][yaxis_name].values
+      x = dataset[dataset[category_name] == cat][xaxis_name].values
+      y = dataset[dataset[category_name] == cat][yaxis_name].values
       series.append(ax.bar(x, y, bottom=bottom))
       bottom += y
 
+    if category_mapping is None:
+      category_labels = categories
+    else:
+      category_labels = category_mapping.ix[categories].geo_label
+
     ax.set_xlabel(xlabel if xlabel is not None else xaxis_name)
     ax.set_ylabel(ylabel if ylabel is not None else yaxis_name)
-    ax.legend([p[0] for p in series], categories)
-    #plt.show()
+    ax.legend([p[0] for p in series], category_labels)
 
 
   def scatter(self, panel, x, y, marker, title=None, **kwargs):
