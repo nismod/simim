@@ -104,7 +104,7 @@ def simim(params):
   # get no of people who moved (by origin) for each LAD - for later use as a scaling factor for migrations
   movers = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE"]].groupby("O_GEOGRAPHY_CODE").sum()
   movers = input_data.get_people(2011, geogs).set_index("GEOGRAPHY_CODE").join(movers)
-  movers["MIGRATION_RATE"] = movers["MIGRATIONS"] / movers["PEOPLE"]
+  movers["MIGRATION_RATE"] = 2 * movers["MIGRATIONS"] / movers["PEOPLE"]
 
   print("Overall migration rate is %1.2f%%" % (100 * movers["MIGRATIONS"].sum() / movers["PEOPLE"].sum()))
 
@@ -175,12 +175,11 @@ def simim(params):
 
     # save dataset for testing
     #dataset.to_csv("./tests/data/testdata.csv", index=False)
-    #break
+
     # check no bad values
     if len(dataset[dataset.isnull().any(axis=1)]) > 0:
       dataset.to_csv("dataset.csv")
     assert len(dataset[dataset.isnull().any(axis=1)]) == 0, "Missing/invalid values in model dataset, dumping to dataset.csv and aborting"
-
 
     model = models.Model(params["model_type"],
                          params["model_subtype"],

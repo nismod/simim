@@ -37,17 +37,9 @@ To run this example, clone the project and run (from project root):
 
 ```bash
 $ ./setup.py install --user
-$ scripts/run.py -c config/production2.json
+$ scripts/run.py -c config/gravity.json
 ```
-Some example configuration files can be found here:
-- [config/gravity.json](config/gravity.json)
-- [config/production.json](config/production.json)
-- [config/production2.json](config/production2.json)
-- [config/production3.json](config/production3.json)
-
-And scenarios here:
-- [data/scenarios/scenario1.csv](data/scenarios/scenario1.csv)
-- [data/scenarios/scenario1.csv](data/scenarios/scenario2.csv)
+The example configuration files can be found [here](config/gravity.json) and scenario [here](data/scenarios/test.csv).
 
 # Data Requirements
 - ONS sub-national population projections

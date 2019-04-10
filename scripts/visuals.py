@@ -12,19 +12,21 @@ Take known migration data (OD matrix) and fit this function to the data
 Change the housing supply and evaluate the function -> modified OD matrix
 Apply modified OD matrix to existing population projection (principal or variant)
 """
-#import os
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import simim.visuals as visuals
+from simim.utils import get_config
 
-def main():
+def main(params):
 
   scale = "gb"
 
   v = visuals.Visual(1, 2)
 
-  data = pd.read_csv("data/output/simim_production_ppp_scenario2.csv")
+  data = pd.read_csv(os.path.join(params["output_dir"], 
+                                  "simim_%s_%s_%s" % (params["model_type"], params["base_projection"], params["scenario"])))
 
   lads = pd.read_csv("data/scenarios/camkox_lads.csv").set_index("geo_code")
 
@@ -32,10 +34,10 @@ def main():
 
   v.stacked_bar((0, 0), rdata, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE_ppp", 
     title="Baseline Projection", xlabel="Year", ylabel="Population", category_mapping=lads)
-  v.panel((0,0)).set_ylim([0,7000000])
+  v.panel((0,0)).set_ylim([0,4000000])
   v.stacked_bar((0, 1), rdata, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE", 
-    title="Scenario 2 Projection", xlabel="Year", ylabel="Population", category_mapping=lads)
-  v.panel((0,1)).set_ylim([0,7000000])
+    title="%s Projection" % params["scenario"], xlabel="Year", ylabel="Population", category_mapping=lads)
+  v.panel((0,1)).set_ylim([0,4000000])
 
   # ldata = data[data.GEOGRAPHY_CODE.str.startswith("E09")]
   # v.stacked_bar((0, 0), ldata, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE_ppp", title="Baseline Projection", xlabel="Year", ylabel="Population")
@@ -46,4 +48,4 @@ def main():
   v.show()
 
 if __name__ == "__main__":
-  main()
+  main(get_config())
