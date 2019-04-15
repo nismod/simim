@@ -38,6 +38,19 @@ def calc_distances(gdf):
   dists.DISTANCE = dists.DISTANCE / 1000.0
   return dists
 
+def dist_weighted_sum(dataset, colname):
+  # exponential decay with half the attraction at 20km
+  l = np.log(0.5) / 20.0
+
+  dataset[colname + "_DISTWEIGHTED"] = dataset[colname] * np.exp(l * dataset.DISTANCE)
+  wsum = dataset.groupby("D_GEOGRAPHY_CODE")[colname + "_DISTWEIGHTED"].sum().reset_index()
+  dataset = dataset.merge(wsum, on="D_GEOGRAPHY_CODE") \
+    .drop(colname + "_DISTWEIGHTED_x", axis=1) \
+    .rename({colname + "_DISTWEIGHTED_y": colname + "_DISTWEIGHTED"}, axis=1)
+  #dataset.to_csv("wdist.csv", index=False)
+
+  return dataset
+
 def r2(fitted, actual):
   return pearsonr(fitted, actual)[0] ** 2
 
