@@ -29,6 +29,8 @@ def _merge_factor(dataset, data, factors):
 
 def simim(params):
 
+  #pd.set_option('display.max_columns', None)
+
   # Differentiate between origin and destination values
   # This allows use of e.g. derived values (e.g. population density) to be both an emitter and an attractor. Absolute values cannot (->singular matrix)
   # enure arrays
@@ -118,8 +120,9 @@ def simim(params):
   for year in range(start_year, scenario_data.timeline()[0]):
     snpp = input_data.get_people(year, geogs)
     # pre-secenario the custom variant is same as the base projection
-    snpp["PEOPLE_" + params["base_projection"]] = snpp.PEOPLE
+    snpp["PEOPLE_SNPP"] = snpp.PEOPLE
     snpp["net_delta"] = 0
+    snpp["net_delta_prev"] = 0
     input_data.append_output(snpp, year)
     print("pre-scenario %d" % year)
 
@@ -133,11 +136,23 @@ def simim(params):
   # loop over scenario years to end_year
   for year in range(scenario_data.timeline()[0], end_year + 1):
     # drop the baseline for the previous year if present (it interferes with the merge)
-    if "PEOPLE_" + params["base_projection"] in snpp:
-      snpp.drop("PEOPLE_" + params["base_projection"], axis=1, inplace=True)
-    snpp = input_data.get_people(year, geogs).merge(snpp, on="GEOGRAPHY_CODE", suffixes=("_" + params["base_projection"], "_prev"))
-    snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) * (snpp["PEOPLE_" + params["base_projection"]] / snpp.PEOPLE_prev)
-    snpp.drop(["PEOPLE_prev", "net_delta", "PROJECTED_YEAR_NAME"], axis=1, inplace=True)
+    # if "PEOPLE_" + params["base_projection"] in snpp:
+    #   snpp.drop("PEOPLE_" + params["base_projection"], axis=1, inplace=True)
+    #snpp = input_data.get_people(year, geogs).merge(snpp, on="GEOGRAPHY_CODE", suffixes=("_" + params["base_projection"], "_prev"))
+    #snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta) * (snpp["PEOPLE_" + params["base_projection"]] / snpp.PEOPLE_prev)
+    # drop old previous baseline
+    if "PEOPLE_SNPP_prev" in snpp:
+      snpp.drop("PEOPLE_SNPP_prev", axis=1, inplace=True)
+    if "PEOPLE_prev" in snpp:
+      snpp.drop("PEOPLE_prev", axis=1, inplace=True)
+    snpp = snpp.rename({"PEOPLE": "PEOPLE_prev", "PEOPLE_SNPP": "PEOPLE_SNPP_prev"}, axis=1)#, inplace=True)
+    snpp = input_data.get_people(year, geogs).merge(snpp, on="GEOGRAPHY_CODE")#, suffixes=("_SNPP", "_ppp_???prev"))
+    snpp = snpp.rename({"PEOPLE": "PEOPLE_SNPP"}, axis=1)
+    #print(snpp[snpp.GEOGRAPHY_CODE.isin(scenario_data.geographies())])
+    snpp["PEOPLE"] = (snpp.PEOPLE_prev + snpp.net_delta - snpp.net_delta_prev) + (snpp.PEOPLE_SNPP - snpp.PEOPLE_SNPP_prev)
+    
+    snpp.drop(["PEOPLE_SNPP_prev", "net_delta_prev", "PROJECTED_YEAR_NAME"], axis=1, inplace=True)
+    snpp = snpp.rename({"net_delta": "net_delta_prev"}, axis=1)
 
     snhp = input_data.get_households(year, geogs)
 
@@ -146,7 +161,8 @@ def simim(params):
     gva = input_data.get_gva(year, geogs)
 
     # Merge attractors and emitters *all at both origin AND destination*
-    dataset = _merge_factor(od_2011, snpp, ["PEOPLE", "PEOPLE_ppp"]).drop("D_PEOPLE_ppp", axis=1)
+    dataset = _merge_factor(od_2011, snpp, ["PEOPLE", "PEOPLE_SNPP"]).drop("D_PEOPLE_SNPP", axis=1)
+    #print(dataset.head())
     dataset = _merge_factor(dataset, snhp, ["HOUSEHOLDS"]) 
     dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
     dataset = _merge_factor(dataset, gva, ["GVA"])
@@ -178,6 +194,8 @@ def simim(params):
       dataset.to_csv("dataset.csv")
     assert len(dataset[dataset.isnull().any(axis=1)]) == 0, "Missing/invalid values in model dataset, dumping to dataset.csv and aborting"
 
+    # print(dataset[(dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE) 
+    #             & (dataset.O_GEOGRAPHY_CODE.isin(scenario_data.geographies()))])
     model = models.Model(params["model_type"],
                          params["model_subtype"],
                          dataset,

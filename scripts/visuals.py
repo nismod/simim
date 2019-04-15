@@ -32,7 +32,7 @@ def main(params):
 
   rdata = data[data.GEOGRAPHY_CODE.isin(lads.index)]
 
-  v.stacked_bar((0, 0), rdata, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE_ppp", 
+  v.stacked_bar((0, 0), rdata, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE_SNPP", 
     title="Baseline Projection", xlabel="Year", ylabel="Population", category_mapping=lads)
   v.panel((0,0)).set_ylim([0,4000000])
   v.stacked_bar((0, 1), rdata, "GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME", "PEOPLE", 

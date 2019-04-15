@@ -10,6 +10,7 @@ import simim.visuals as visuals
 from simim.utils import od_matrix, get_config
 
 def main(params):
+
   """ Run it """
   try:
     # print some info...
@@ -46,7 +47,7 @@ def main(params):
     # Cambridge "E07000008"
     lad = "E07000178" # Oxford
     c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == lad]
-    v.line((0,1), c.PROJECTED_YEAR_NAME, c["PEOPLE_" + params["base_projection"]], "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (%s)" % lad)
+    v.line((0,1), c.PROJECTED_YEAR_NAME, c["PEOPLE_SNPP"], "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact of scenario on population (%s)" % lad)
     v.line((0,1), c.PROJECTED_YEAR_NAME, c.PEOPLE + c.net_delta, "r", label="scenario")
     v.panel((0,1)).legend() #("b","r"), ("base", "scenario"))
 

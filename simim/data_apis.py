@@ -254,7 +254,7 @@ class Instance():
     inreg = self.custom_snpp_variant[(self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon)
                                    & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario.geographies()))].drop("net_delta", axis=1) 
     print("TOTAL: %.0f baseline vs %.0f scenario (increase of %.0f)"
-      % (inreg.PEOPLE_ppp.sum(), inreg.PEOPLE.sum(), inreg.PEOPLE.sum() - inreg.PEOPLE_ppp.sum()))
+      % (inreg.PEOPLE_SNPP.sum(), inreg.PEOPLE.sum(), inreg.PEOPLE.sum() - inreg.PEOPLE_SNPP.sum()))
     print(inreg)
 
     print("10 largest migration origins:")
@@ -262,5 +262,5 @@ class Instance():
                             .nsmallest(10, "net_delta").drop("net_delta", axis=1))
 
   def write_output(self):
-    self.custom_snpp_variant.to_csv(self.output_file, index=False)
+    self.custom_snpp_variant.drop(["net_delta","net_delta_prev","PEOPLE_prev"], axis=1).to_csv(self.output_file, index=False)
 

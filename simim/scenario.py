@@ -11,17 +11,24 @@ class Scenario():
     if isinstance(factors, str):
       factors = [factors]
 
-    print(self.data.columns)
     # rename scenario cols with O_ or D_ prefixes as necessary
     for column in [f for f in self.data.columns.values if not f.startswith("CUM_") and f not in ["GEOGRAPHY_CODE", "YEAR"]]:
       if "O_" + column in factors:
         self.data.rename({column: "O_" + column, "CUM_" + column: "CUM_O_" + column }, axis=1, inplace=True)
       elif "D_" + column in factors:
         self.data.rename({column: "D_" + column, "CUM_" + column: "CUM_D_" + column }, axis=1, inplace=True)
-    print(self.data.columns)
     
     missing = [factor for factor in factors if factor not in self.data.columns] 
 
+    # check scenario has no factors that aren't in model
+    superfluous = [factor for factor in self.data.columns if factor not in factors and \
+                                                             not factor.startswith("CUM_") and \
+                                                             factor != "GEOGRAPHY_CODE" and \
+                                                             factor != "YEAR"]
+    if superfluous:
+      raise ValueError("ERROR: Factor(s) %s are in scenario but not a model factor, remove or add to model" % str(superfluous))
+
+    print("Superfluous factors:", superfluous)
     print("Available factors:", factors)
     print("Scenario factors:", [f for f in self.data.columns.values if not f.startswith("CUM_") and f not in ["GEOGRAPHY_CODE", "YEAR"]])
     print("Scenario timeline:", self.timeline())
