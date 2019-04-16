@@ -20,15 +20,16 @@ class Scenario():
     
     missing = [factor for factor in factors if factor not in self.data.columns] 
 
+    # This doesnt allow for e.g. JOBS in scenario and a factor of JOBS_DISTWEIGHTED
     # check scenario has no factors that aren't in model
-    superfluous = [factor for factor in self.data.columns if factor not in factors and \
-                                                             not factor.startswith("CUM_") and \
-                                                             factor != "GEOGRAPHY_CODE" and \
-                                                             factor != "YEAR"]
-    if superfluous:
-      raise ValueError("ERROR: Factor(s) %s are in scenario but not a model factor, remove or add to model" % str(superfluous))
+    # superfluous = [factor for factor in self.data.columns if factor not in factors and \
+    #                                                          not factor.startswith("CUM_") and \
+    #                                                          factor != "GEOGRAPHY_CODE" and \
+    #                                                          factor != "YEAR"]
+    # if superfluous:
+    #   raise ValueError("ERROR: Factor(s) %s are in scenario but not a model factor, remove or add to model" % str(superfluous))
 
-    print("Superfluous factors:", superfluous)
+    #print("Superfluous factors:", superfluous)
     print("Available factors:", factors)
     print("Scenario factors:", [f for f in self.data.columns.values if not f.startswith("CUM_") and f not in ["GEOGRAPHY_CODE", "YEAR"]])
     print("Scenario timeline:", self.timeline())
@@ -81,6 +82,7 @@ class Scenario():
     dataset = dataset.merge(self.current_scenario.drop(self.factors, axis=1), how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
       .drop(["GEOGRAPHY_CODE", "YEAR"], axis=1).fillna(0)
     for factor in self.factors:
+      #print(dataset.columns.values)
       # skip constrained
       if factor != "O_GEOGRAPHY_CODE" and factor != "D_GEOGRAPHY_CODE":
         dataset["CHANGED_" + factor] = dataset[factor] + dataset["CUM_" + factor]

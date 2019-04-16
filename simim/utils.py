@@ -42,7 +42,11 @@ def dist_weighted_sum(dataset, colname):
   # exponential decay with half the attraction at 20km
   l = np.log(0.5) / 20.0
 
-  dataset[colname + "_DISTWEIGHTED"] = dataset[colname] * np.exp(l * dataset.DISTANCE)
+  # London hack
+  dataset["LEN"] = 20.0
+  dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "LEN"] = 1.0
+
+  dataset[colname + "_DISTWEIGHTED"] = dataset[colname] * np.exp(dataset.LEN * dataset.DISTANCE)
   wsum = dataset.groupby("D_GEOGRAPHY_CODE")[colname + "_DISTWEIGHTED"].sum().reset_index()
   dataset = dataset.merge(wsum, on="D_GEOGRAPHY_CODE") \
     .drop(colname + "_DISTWEIGHTED_x", axis=1) \

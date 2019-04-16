@@ -1,18 +1,16 @@
 {
   "coverage": "GB",
-  "model_type": "gravity",
-  "start_year": 2019,
-  "end_year": 2030,
+  "model_type": "production",
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
-  "emitters": ["PEOPLE"],
-  "attractors": ["JOBS_DISTWEIGHTED"],
+  "emitters": "GEOGRAPHY_CODE",
+  "attractors": ["HOUSEHOLDS", "JOBS_DISTWEIGHTED"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
-  "scenario": "null.csv",
   "scenario_dir": "./data/scenarios",
+  "scenario": "scenario2j.csv",
+  "end_year": 2050,
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data/output",
-  "graphics": false
+  "graphics": true
 }
-

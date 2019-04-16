@@ -167,12 +167,7 @@ def simim(params):
     dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
     dataset = _merge_factor(dataset, gva, ["GVA"])
 
-    #def lambda(k, x): return np.exp(k * x)
-
-    #x = dist_weighted_sum(dataset[[ORIGIN_PREFIX + "GEOGRAPHY_CODE", DESTINATION_PREFIX + "GEOGRAPHY_CODE", DESTINATION_PREFIX + "JOBS"]], dists)
     dataset = dist_weighted_sum(dataset, "D_JOBS")
-    # print(x)
-    # exit(1)
 
     # Calculate some derived factors
     dataset[ORIGIN_PREFIX + "PEOPLE_DENSITY"] = dataset[ORIGIN_PREFIX + "PEOPLE"] / dataset.O_AREA_KM2
