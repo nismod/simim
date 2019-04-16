@@ -167,7 +167,8 @@ def simim(params):
     dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
     dataset = _merge_factor(dataset, gva, ["GVA"])
 
-    dataset = dist_weighted_sum(dataset, "D_JOBS")
+    # distance decay function is exp(-ln(0.5)d/l) ensure half the attraction at distance l
+    dataset = dist_weighted_sum(dataset, "D_JOBS", 20.0, lambda l, d: np.exp(np.log(0.5) / l * d))
 
     # Calculate some derived factors
     dataset[ORIGIN_PREFIX + "PEOPLE_DENSITY"] = dataset[ORIGIN_PREFIX + "PEOPLE"] / dataset.O_AREA_KM2
@@ -227,7 +228,11 @@ def simim(params):
     # apply scenario to dataset
     model.dataset = scenario_data.apply(model.dataset, year)
 
-    changed_attractor_values = get_named_values(model.dataset, params["attractors"], prefix="CHANGED_")
+    # this is broken
+    #changed_attractor_values = get_named_values(model.dataset, params["attractors"], prefix="CHANGED_")
+    changed_attractor_values = model.dataset[["CHANGED_D_HOUSEHOLDS", "CHANGED_D_JOBS_DISTWEIGHTED"]]
+
+    #print(changed_attractor_values)
     # emission factors aren't impacted by the (immediate) scenario
     # TODO allow for scenarios on origin parameters
     emitter_values = get_named_values(model.dataset, params["emitters"], prefix="")

@@ -38,20 +38,18 @@ def calc_distances(gdf):
   dists.DISTANCE = dists.DISTANCE / 1000.0
   return dists
 
-def dist_weighted_sum(dataset, colname):
+def dist_weighted_sum(dataset, colname, halfdist, decay_function):
   # exponential decay with half the attraction at 20km
-  l = np.log(0.5) / 20.0
+  # apart from London, which decays more slowly due to transport links and wages 
+  dataset["LEN"] = halfdist 
+  dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "LEN"] = 2 * halfdist
 
-  # London hack
-  dataset["LEN"] = 20.0
-  dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "LEN"] = 1.0
-
-  dataset[colname + "_DISTWEIGHTED"] = dataset[colname] * np.exp(dataset.LEN * dataset.DISTANCE)
+  dataset[colname + "_DISTWEIGHTED"] = dataset[colname] * decay_function(dataset.LEN, dataset.DISTANCE)
   wsum = dataset.groupby("D_GEOGRAPHY_CODE")[colname + "_DISTWEIGHTED"].sum().reset_index()
   dataset = dataset.merge(wsum, on="D_GEOGRAPHY_CODE") \
     .drop(colname + "_DISTWEIGHTED_x", axis=1) \
     .rename({colname + "_DISTWEIGHTED_y": colname + "_DISTWEIGHTED"}, axis=1)
-  #dataset.to_csv("wdist.csv", index=False)
+  dataset.to_csv("wdist.csv", index=False)
 
   return dataset
 
