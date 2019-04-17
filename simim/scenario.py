@@ -51,10 +51,9 @@ class Scenario():
     print("Updated scenario to %d" % year)
 
     # apply to origins then destinations
-    print(self.current_scenario)
+    #print(self.current_scenario)
     dataset = dataset.merge(self.current_scenario, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
       .drop(["GEOGRAPHY_CODE", "YEAR"], axis=1).fillna(0)
-    print(dataset.columns.values)
     for factor in self.factors:
       dataset["O_" + factor] += dataset[factor]
     dataset.drop(self.factors, axis=1, inplace=True)

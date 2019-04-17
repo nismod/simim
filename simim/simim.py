@@ -43,6 +43,27 @@ def _apply_delta(dataset, factor_name, relative=False):
   dataset.drop([ORIGIN_PREFIX + factor_name + "_DELTA", DESTINATION_PREFIX + factor_name + "_DELTA"], axis=1, inplace=True)
   return dataset
 
+def _compute_derived_factors(dataset):
+  # Calculate some derived factors
+  # dataset[ORIGIN_PREFIX + "PEOPLE_DENSITY"] = dataset[ORIGIN_PREFIX + "PEOPLE"] / dataset.O_AREA_KM2
+  # dataset[ORIGIN_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_AREA_KM2
+  # dataset[ORIGIN_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_PEOPLE
+  # dataset[ORIGIN_PREFIX + "JOBS_DENSITY"] = dataset[ORIGIN_PREFIX + "JOBS"] / dataset.O_AREA_KM2
+
+  # dataset[DESTINATION_PREFIX + "PEOPLE_DENSITY"] = dataset[DESTINATION_PREFIX + "PEOPLE"] / dataset.D_AREA_KM2
+  # dataset[DESTINATION_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_AREA_KM2
+  # dataset[DESTINATION_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_PEOPLE
+  # dataset[DESTINATION_PREFIX + "JOBS_DENSITY"] = dataset[DESTINATION_PREFIX + "JOBS"] / dataset.D_AREA_KM2
+
+  # # London's high GVA does not prevent migration so we artificially reduce it
+  # dataset[DESTINATION_PREFIX + "GVA_EX_LONDON"] = dataset[DESTINATION_PREFIX + "GVA"]
+  # min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
+  # dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
+
+  # distance decay function is exp(-ln(0.5)d/l) ensure half the attraction at distance l
+  dataset = dist_weighted_sum(dataset, "D_JOBS", 20.0, lambda l, d: np.exp(np.log(0.5) / l * d))
+  return dataset
+
 def simim(params):
 
   #pd.set_option('display.max_columns', None)
@@ -160,25 +181,6 @@ def simim(params):
   dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
   dataset = _merge_factor(dataset, gva, ["GVA"])
 
-  # Calculate some derived factors
-  # dataset[ORIGIN_PREFIX + "PEOPLE_DENSITY"] = dataset[ORIGIN_PREFIX + "PEOPLE"] / dataset.O_AREA_KM2
-  # dataset[ORIGIN_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_AREA_KM2
-  # dataset[ORIGIN_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_PEOPLE
-  # dataset[ORIGIN_PREFIX + "JOBS_DENSITY"] = dataset[ORIGIN_PREFIX + "JOBS"] / dataset.O_AREA_KM2
-
-  # dataset[DESTINATION_PREFIX + "PEOPLE_DENSITY"] = dataset[DESTINATION_PREFIX + "PEOPLE"] / dataset.D_AREA_KM2
-  # dataset[DESTINATION_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_AREA_KM2
-  # dataset[DESTINATION_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_PEOPLE
-  # dataset[DESTINATION_PREFIX + "JOBS_DENSITY"] = dataset[DESTINATION_PREFIX + "JOBS"] / dataset.D_AREA_KM2
-
-  # # London's high GVA does not prevent migration so we artificially reduce it
-  # dataset[DESTINATION_PREFIX + "GVA_EX_LONDON"] = dataset[DESTINATION_PREFIX + "GVA"]
-  # min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
-  # dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
-
-  # distance decay function is exp(-ln(0.5)d/l) ensure half the attraction at distance l
-  dataset = dist_weighted_sum(dataset, "D_JOBS", 20.0, lambda l, d: np.exp(np.log(0.5) / l * d))
-
   #dataset.to_csv("./dataset.csv", index=False)
   # check no bad values
   if len(dataset[dataset.isnull().any(axis=1)]) > 0:
@@ -211,8 +213,30 @@ def simim(params):
     print("alpha =", *model.alpha())
   print("beta = %f" % model.beta())
 
-  # TODO apply scenario, recompute flows
-  # scenario_data.update()
+  # TODO make a class method passing (and only computing) factors required for efficiency
+  # compute derived factors...
+  model.dataset = _compute_derived_factors(model.dataset)
+  
+  # check no bad values in data
+  model.check_dataset()
+
+  # compute pre-scenario model migrations
+  emitter_values = get_named_values(model.dataset, params["emitters"])
+  attractor_values = get_named_values(model.dataset, params["attractors"])
+  model.dataset["PRE_MIGRATIONS"] = model(emitter_values, attractor_values)
+
+  # apply scenario and recompute derived factors
+  model.dataset = scenario_data.apply(model.dataset, year)
+  model.dataset = _compute_derived_factors(model.dataset)
+  # recheck
+  model.check_dataset()
+
+  # re-evaluate model and record changes
+  emitter_values = get_named_values(model.dataset, params["emitters"])
+  attractor_values = get_named_values(model.dataset, params["attractors"])
+  model.dataset["POST_MIGRATIONS"] = model(emitter_values, attractor_values)
+
+  # TODO adjust PEOPLE
 
   # loop over scenario years to end_year
   for year in range(scenario_data.timeline()[1], end_year + 1): 
@@ -239,55 +263,40 @@ def simim(params):
     model.dataset = _merge_factor(model.dataset, gva, ["GVA_DELTA"])
     model.dataset = _apply_delta(model.dataset, "GVA")
 
-    # apply scenario
-    scenario_data.apply(model.dataset, year)
+    # compute derived factors...
+    model.dataset = _compute_derived_factors(model.dataset)
+    
+    # check no bad values in data
+    model.check_dataset()
 
-    model.dataset.to_csv("./dataset.csv", index=False)
-    exit(1)
+    # compute pre-scenario model migrations
+    emitter_values = get_named_values(model.dataset, params["emitters"])
+    attractor_values = get_named_values(model.dataset, params["attractors"])
+    model.dataset["PRE_MIGRATIONS"] = model(emitter_values, attractor_values)
 
-    # # Calculate some derived factors
-    # dataset[ORIGIN_PREFIX + "PEOPLE_DENSITY"] = dataset[ORIGIN_PREFIX + "PEOPLE"] / dataset.O_AREA_KM2
-    # dataset[ORIGIN_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_AREA_KM2
-    # dataset[ORIGIN_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_PEOPLE
-    # dataset[ORIGIN_PREFIX + "JOBS_DENSITY"] = dataset[ORIGIN_PREFIX + "JOBS"] / dataset.O_AREA_KM2
-
-    # dataset[DESTINATION_PREFIX + "PEOPLE_DENSITY"] = dataset[DESTINATION_PREFIX + "PEOPLE"] / dataset.D_AREA_KM2
-    # dataset[DESTINATION_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_AREA_KM2
-    # dataset[DESTINATION_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_PEOPLE
-    # dataset[DESTINATION_PREFIX + "JOBS_DENSITY"] = dataset[DESTINATION_PREFIX + "JOBS"] / dataset.D_AREA_KM2
-
-    # # London's high GVA does not prevent migration so we artificially reduce it
-    # dataset[DESTINATION_PREFIX + "GVA_EX_LONDON"] = dataset[DESTINATION_PREFIX + "GVA"]
-    # min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
-    # dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
-
-    # distance decay function is exp(-ln(0.5)d/l) ensure half the attraction at distance l
-    model.dataset = dist_weighted_sum(model.dataset, "D_JOBS", 20.0, lambda l, d: np.exp(np.log(0.5) / l * d))
-
-
-    # save dataset for testing
-    #dataset.to_csv("./tests/data/testdata.csv", index=False)
-
-    # check no bad values
-    if len(dataset[dataset.isnull().any(axis=1)]) > 0:
-      dataset.to_csv("dataset.csv")
-    assert len(dataset[dataset.isnull().any(axis=1)]) == 0, "Missing/invalid values in model dataset, dumping to dataset.csv and aborting"
-
-    # apply scenario to dataset
+    # apply scenario and recompute derived factors
+    print(model.dataset[(model.dataset.O_GEOGRAPHY_CODE==model.dataset.D_GEOGRAPHY_CODE) 
+      & (model.dataset.O_GEOGRAPHY_CODE.isin(scenario_data.geographies()))][["O_GEOGRAPHY_CODE", "D_HOUSEHOLDS"]])
     model.dataset = scenario_data.apply(model.dataset, year)
-
-    # TODO recompute derived factors
+    print(model.dataset[(model.dataset.O_GEOGRAPHY_CODE==model.dataset.D_GEOGRAPHY_CODE) 
+      & (model.dataset.O_GEOGRAPHY_CODE.isin(scenario_data.geographies()))][["O_GEOGRAPHY_CODE", "D_HOUSEHOLDS"]])
+    model.dataset = _compute_derived_factors(model.dataset)
+    # recheck
+    model.check_dataset()
 
     # re-evaluate model and record changes
-    model.dataset["CHANGED_MIGRATIONS"] = model(emitter_values, attractor_values)
+    emitter_values = get_named_values(model.dataset, params["emitters"])
+    attractor_values = get_named_values(model.dataset, params["attractors"])
+    model.dataset["POST_MIGRATIONS"] = model(emitter_values, attractor_values)
 
-    # model.dataset.to_csv("dataset.csv", index=False)
-    # exit(1)
+    model.dataset.to_csv("dataset.csv", index=False)
+    exit(1)
 
     # compute migration inflows and outflow changes
     delta = pd.DataFrame({"o_lad16cd": model.dataset.O_GEOGRAPHY_CODE,
                           "d_lad16cd": model.dataset.D_GEOGRAPHY_CODE,
-                          "delta": -model.dataset.CHANGED_MIGRATIONS + model.dataset.MODEL_MIGRATIONS})
+                          "delta": model.dataset.MIGRATIONS + model.dataset.POST_MIGRATIONS - model.dataset.PRE_MIGRATIONS})
+
     # upscale delta by mover percentage at origin
     delta = pd.merge(delta, movers, left_on="o_lad16cd", right_index=True) 
     # TODO reinstate if necessary
