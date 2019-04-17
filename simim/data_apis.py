@@ -241,8 +241,9 @@ class Instance():
     return lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
 
   def append_output(self, dataset, year):
-    dataset["PROJECTED_YEAR_NAME"] = year
-    self.custom_snpp_variant = self.custom_snpp_variant.append(dataset, ignore_index=True, sort=False)
+    localdataset = dataset.copy()
+    localdataset["PROJECTED_YEAR_NAME"] = year
+    self.custom_snpp_variant = self.custom_snpp_variant.append(localdataset, ignore_index=True, sort=False)
 
   def summarise_output(self, scenario):
     horizon = self.custom_snpp_variant.PROJECTED_YEAR_NAME.unique().max()
@@ -252,15 +253,17 @@ class Instance():
     print("Summary at horizon year: %d" % horizon)
     print("In-region population changes:")
     inreg = self.custom_snpp_variant[(self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon)
-                                   & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario.geographies()))].drop("net_delta", axis=1) 
+                                   & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario.geographies()))] 
     print("TOTAL: %.0f baseline vs %.0f scenario (increase of %.0f)"
       % (inreg.PEOPLE_SNPP.sum(), inreg.PEOPLE.sum(), inreg.PEOPLE.sum() - inreg.PEOPLE_SNPP.sum()))
     print(inreg)
 
     print("10 largest migration origins:")
+    self.custom_snpp_variant["net_delta"] = self.custom_snpp_variant.PEOPLE_SNPP - self.custom_snpp_variant.PEOPLE
     print(self.custom_snpp_variant[self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon]
                             .nsmallest(10, "net_delta").drop("net_delta", axis=1))
 
   def write_output(self):
-    self.custom_snpp_variant.drop(["net_delta","net_delta_prev","PEOPLE_prev"], axis=1).to_csv(self.output_file, index=False)
+    self.custom_snpp_variant.to_csv(self.output_file, index=False)
+    #.drop(["net_delta","net_delta_prev","PEOPLE_prev"], axis=1).to_csv(self.output_file, index=False)
 
