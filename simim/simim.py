@@ -26,6 +26,22 @@ def _merge_factor(dataset, data, factors):
     .rename(dmapping, axis=1)
   return dataset
 
+def _get_delta(fetch_func, name, year, geogs):
+  data_prev = fetch_func(year - 1, geogs).rename({name: name + "_PREV"},axis=1) 
+  data = fetch_func(year, geogs)
+  data = data.merge(data_prev, on="GEOGRAPHY_CODE")
+  data[name + "_DELTA"] = data[name] - data[name + "_PREV"]
+  return data[["GEOGRAPHY_CODE", name + "_DELTA"]]
+
+def _apply_delta(dataset, factor_name, relative=False):
+  if relative:
+    dataset[ORIGIN_PREFIX + factor_name] *= dataset[ORIGIN_PREFIX + factor_name + "_DELTA"]
+    dataset[DESTINATION_PREFIX + factor_name] *= dataset[DESTINATION_PREFIX + factor_name + "_DELTA"]
+  else:
+    dataset[ORIGIN_PREFIX + factor_name] += dataset[ORIGIN_PREFIX + factor_name + "_DELTA"]
+    dataset[DESTINATION_PREFIX + factor_name] += dataset[DESTINATION_PREFIX + factor_name + "_DELTA"]
+  dataset.drop([ORIGIN_PREFIX + factor_name + "_DELTA", DESTINATION_PREFIX + factor_name + "_DELTA"], axis=1, inplace=True)
+  return dataset
 
 def simim(params):
 
@@ -124,41 +140,110 @@ def simim(params):
     snpp = input_data.get_people(year, geogs)
     # pre-secenario the custom variant is same as the base projection
     snpp["PEOPLE_SNPP"] = snpp.PEOPLE
+    snhp = input_data.get_households(year, geogs)
+    snhp["HOUSEHOLDS_SNHP"] = snhp.HOUSEHOLDS
     input_data.append_output(snpp, year)
     print("pre-scenario %d" % year)
 
-  model = None
+  # assemble initial model 
+  year = scenario_data.timeline()[0]
+  snpp = input_data.get_people(year, geogs)
+  snhp = input_data.get_households(year, geogs)
+
+  jobs = input_data.get_jobs(year, geogs)
+  gva = input_data.get_gva(year, geogs)
+
+  # Merge attractors and emitters *all at both origin AND destination*
+  dataset = _merge_factor(od_2011, snpp, ["PEOPLE"])
+  #print(dataset.head())
+  dataset = _merge_factor(dataset, snhp, ["HOUSEHOLDS"]) 
+  dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
+  dataset = _merge_factor(dataset, gva, ["GVA"])
+
+  # Calculate some derived factors
+  # dataset[ORIGIN_PREFIX + "PEOPLE_DENSITY"] = dataset[ORIGIN_PREFIX + "PEOPLE"] / dataset.O_AREA_KM2
+  # dataset[ORIGIN_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_AREA_KM2
+  # dataset[ORIGIN_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_PEOPLE
+  # dataset[ORIGIN_PREFIX + "JOBS_DENSITY"] = dataset[ORIGIN_PREFIX + "JOBS"] / dataset.O_AREA_KM2
+
+  # dataset[DESTINATION_PREFIX + "PEOPLE_DENSITY"] = dataset[DESTINATION_PREFIX + "PEOPLE"] / dataset.D_AREA_KM2
+  # dataset[DESTINATION_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_AREA_KM2
+  # dataset[DESTINATION_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_PEOPLE
+  # dataset[DESTINATION_PREFIX + "JOBS_DENSITY"] = dataset[DESTINATION_PREFIX + "JOBS"] / dataset.D_AREA_KM2
+
+  # # London's high GVA does not prevent migration so we artificially reduce it
+  # dataset[DESTINATION_PREFIX + "GVA_EX_LONDON"] = dataset[DESTINATION_PREFIX + "GVA"]
+  # min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
+  # dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
+
+  # distance decay function is exp(-ln(0.5)d/l) ensure half the attraction at distance l
+  dataset = dist_weighted_sum(dataset, "D_JOBS", 20.0, lambda l, d: np.exp(np.log(0.5) / l * d))
+
+  #dataset.to_csv("./dataset.csv", index=False)
+  # check no bad values
+  if len(dataset[dataset.isnull().any(axis=1)]) > 0:
+    dataset.to_csv("dataset.csv")
+  assert len(dataset[dataset.isnull().any(axis=1)]) == 0, "Missing/invalid values in model dataset, dumping to dataset.csv and aborting"
+
+  model = models.Model(params["model_type"],
+                        params["model_subtype"],
+                        dataset,
+                        params["observation"],
+                        params["emitters"],
+                        params["attractors"],
+                        params["cost"])
+  # dataset is now sunk into model, delete the original
+  del dataset
+
+  emitter_values = get_named_values(model.dataset, params["emitters"])
+  attractor_values = get_named_values(model.dataset, params["attractors"])
+  # check recalculation matches the fitted values
+  assert np.allclose(model.impl.yhat, model(emitter_values, attractor_values))
+
+  # print the model params
+  print("%d data %s/%s Poisson fit:\nR2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
+  print("k =", model.k())
+  if params["model_type"] == "gravity" or params["model_type"] == "attraction":
+    print("       ", params["emitters"])
+    print("mu    =", *model.mu())
+  if params["model_type"] == "gravity" or params["model_type"] == "production":
+    print("       ", params["attractors"])
+    print("alpha =", *model.alpha())
+  print("beta = %f" % model.beta())
+
+  # TODO apply scenario, recompute flows
+  # scenario_data.update()
 
   # loop over scenario years to end_year
-  for year in range(scenario_data.timeline()[0], end_year + 1): 
+  for year in range(scenario_data.timeline()[1], end_year + 1): 
 
-    # TODO persist data from model 
-    snpp_prev = snpp.rename({"PEOPLE": "PEOPLE_PREV", "PEOPLE_SNPP": "PEOPLE_SNPP_PREV"}, axis=1)
-    #print(snpp_prev.head())
-    snpp = input_data.get_people(year, geogs).rename({"PEOPLE": "PEOPLE_SNPP"},axis=1)
+    # persist data from model but take relative SNPP change
+    snpp_prev = input_data.get_people(year-1, geogs).rename({"PEOPLE": "PEOPLE_PREV"},axis=1)
+    snpp = input_data.get_people(year, geogs)
     snpp = snpp.merge(snpp_prev, on="GEOGRAPHY_CODE")
-    snpp["DELTA_SNPP"] = snpp["PEOPLE_SNPP"] / snpp_prev["PEOPLE_SNPP_PREV"]
-    snpp["PEOPLE"] = snpp["PEOPLE_PREV"] * snpp["DELTA_SNPP"]
+    # relative delta
+    snpp["PEOPLE_DELTA"] = snpp["PEOPLE"] / snpp["PEOPLE_PREV"]
+    model.dataset = _merge_factor(model.dataset, snpp[["GEOGRAPHY_CODE", "PEOPLE_DELTA"]], ["PEOPLE_DELTA"])
+    model.dataset = _apply_delta(model.dataset, "PEOPLE", relative=True)
 
-    # TODO SNHP_PREV/DELTA
-    snhp = input_data.get_households(year, geogs)
+    # absolute deltas
+    snhp = _get_delta(input_data.get_households, "HOUSEHOLDS", year, geogs)
+    model.dataset = _merge_factor(model.dataset, snhp, ["HOUSEHOLDS_DELTA"])
+    model.dataset = _apply_delta(model.dataset, "HOUSEHOLDS")
 
-    jobs = input_data.get_jobs(year, geogs)
+    jobs = _get_delta(input_data.get_jobs, "JOBS", year, geogs)
+    model.dataset = _merge_factor(model.dataset, jobs, ["JOBS_DELTA"])
+    model.dataset = _apply_delta(model.dataset, "JOBS")
 
-    gva = input_data.get_gva(year, geogs)
+    gva = _get_delta(input_data.get_gva, "GVA", year, geogs)
+    model.dataset = _merge_factor(model.dataset, gva, ["GVA_DELTA"])
+    model.dataset = _apply_delta(model.dataset, "GVA")
 
-    # Merge attractors and emitters *all at both origin AND destination*
-    dataset = _merge_factor(od_2011, snpp, ["PEOPLE", "PEOPLE_SNPP"]).drop("D_PEOPLE_SNPP", axis=1)
-    #print(dataset.head())
-    dataset = _merge_factor(dataset, snhp, ["HOUSEHOLDS"]) 
-    dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
-    dataset = _merge_factor(dataset, gva, ["GVA"])
+    # apply scenario
+    scenario_data.apply(model.dataset, year)
 
-    # distance decay function is exp(-ln(0.5)d/l) ensure half the attraction at distance l
-    dataset = dist_weighted_sum(dataset, "D_JOBS", 20.0, lambda l, d: np.exp(np.log(0.5) / l * d))
-
-    # dataset.to_csv("dataset.csv", index=False)
-    # exit(1)
+    model.dataset.to_csv("./dataset.csv", index=False)
+    exit(1)
 
     # # Calculate some derived factors
     # dataset[ORIGIN_PREFIX + "PEOPLE_DENSITY"] = dataset[ORIGIN_PREFIX + "PEOPLE"] / dataset.O_AREA_KM2
@@ -176,8 +261,9 @@ def simim(params):
     # min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
     # dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
 
-    # scale up migrations to full population?
-    #dataset.loc[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE, "MIGRATIONS"] = dataset[dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE].MIGRATIONS * 50
+    # distance decay function is exp(-ln(0.5)d/l) ensure half the attraction at distance l
+    model.dataset = dist_weighted_sum(model.dataset, "D_JOBS", 20.0, lambda l, d: np.exp(np.log(0.5) / l * d))
+
 
     # save dataset for testing
     #dataset.to_csv("./tests/data/testdata.csv", index=False)
@@ -186,34 +272,6 @@ def simim(params):
     if len(dataset[dataset.isnull().any(axis=1)]) > 0:
       dataset.to_csv("dataset.csv")
     assert len(dataset[dataset.isnull().any(axis=1)]) == 0, "Missing/invalid values in model dataset, dumping to dataset.csv and aborting"
-
-    # print(dataset[(dataset.O_GEOGRAPHY_CODE == dataset.D_GEOGRAPHY_CODE) 
-    #             & (dataset.O_GEOGRAPHY_CODE.isin(scenario_data.geographies()))])
-    model = models.Model(params["model_type"],
-                         params["model_subtype"],
-                         dataset,
-                         params["observation"],
-                         params["emitters"],
-                         params["attractors"],
-                         params["cost"])
-    # dataset is now sunk into model, prevent accidental access by deleting the original
-    del dataset
-
-    emitter_values = get_named_values(model.dataset, params["emitters"])
-    attractor_values = get_named_values(model.dataset, params["attractors"])
-    # check recalculation matches the fitted values
-    assert np.allclose(model.impl.yhat, model(emitter_values, attractor_values))
-
-    # print some model params
-    print("%d data %s/%s Poisson fit:\nR2 = %f, RMSE=%f" % (year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
-    print("k =", model.k())
-    if params["model_type"] == "gravity" or params["model_type"] == "attraction":
-      print("       ", params["emitters"])
-      print("mu    =", *model.mu())
-    if params["model_type"] == "gravity" or params["model_type"] == "production":
-      print("       ", params["attractors"])
-      print("alpha =", *model.alpha())
-    print("beta = %f" % model.beta())
 
     # apply scenario to dataset
     model.dataset = scenario_data.apply(model.dataset, year)
@@ -252,7 +310,8 @@ def simim(params):
     snpp.drop("net_delta", axis=1, inplace=True)
     input_data.append_output(snpp, year)
 
-    print(snpp[snpp.GEOGRAPHY_CODE.isin(scenario_data.geographies())])
+    #print(snpp[snpp.GEOGRAPHY_CODE.isin(scenario_data.geographies())])
+    #exit(1)
 
     #break
 

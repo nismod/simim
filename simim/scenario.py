@@ -50,13 +50,20 @@ class Scenario():
 
     print("Updated scenario to %d" % year)
 
-    # TODO THIS HARD-CODES SCENARIO TO DESTINATION
-    dataset = dataset.merge(self.current_scenario, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
+    # apply to origins then destinations
+    print(self.current_scenario)
+    dataset = dataset.merge(self.current_scenario, how="left", left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
       .drop(["GEOGRAPHY_CODE", "YEAR"], axis=1).fillna(0)
-
+    print(dataset.columns.values)
     for factor in self.factors:
       dataset["O_" + factor] += dataset[factor]
-      dataset["D_" + factor] += dataset[factor]
+    dataset.drop(self.factors, axis=1, inplace=True)
 
-    return dataset.drop(self.factors, axis=1)
+    dataset = dataset.merge(self.current_scenario, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
+      .drop(["GEOGRAPHY_CODE", "YEAR"], axis=1).fillna(0)
+    for factor in self.factors:
+      dataset["D_" + factor] += dataset[factor]
+    dataset.drop(self.factors, axis=1, inplace=True)
+
+    return dataset
 
