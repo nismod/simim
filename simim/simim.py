@@ -182,10 +182,6 @@ def simim(params):
   dataset = _merge_factor(dataset, gva, ["GVA"])
 
   #dataset.to_csv("./dataset.csv", index=False)
-  # check no bad values
-  if len(dataset[dataset.isnull().any(axis=1)]) > 0:
-    dataset.to_csv("dataset.csv")
-  assert len(dataset[dataset.isnull().any(axis=1)]) == 0, "Missing/invalid values in model dataset, dumping to dataset.csv and aborting"
 
   model = models.Model(params["model_type"],
                         params["model_subtype"],
@@ -238,8 +234,8 @@ def simim(params):
 
   # TODO adjust PEOPLE
 
-  # loop over scenario years to end_year
-  for year in range(scenario_data.timeline()[1], end_year + 1): 
+  # TODO get loop bounds correct loop over scenario years to end_year
+  for year in range(scenario_data.timeline()[0], end_year + 1): 
 
     # persist data from model but take relative SNPP change
     snpp_prev = input_data.get_people(year-1, geogs).rename({"PEOPLE": "PEOPLE_PREV"},axis=1)
@@ -275,11 +271,11 @@ def simim(params):
     model.dataset["PRE_MIGRATIONS"] = model(emitter_values, attractor_values)
 
     # apply scenario and recompute derived factors
-    print(model.dataset[(model.dataset.O_GEOGRAPHY_CODE==model.dataset.D_GEOGRAPHY_CODE) 
-      & (model.dataset.O_GEOGRAPHY_CODE.isin(scenario_data.geographies()))][["O_GEOGRAPHY_CODE", "D_HOUSEHOLDS"]])
+    # print(model.dataset[(model.dataset.O_GEOGRAPHY_CODE==model.dataset.D_GEOGRAPHY_CODE) 
+    #   & (model.dataset.O_GEOGRAPHY_CODE.isin(scenario_data.geographies()))][["O_GEOGRAPHY_CODE", "D_HOUSEHOLDS"]])
     model.dataset = scenario_data.apply(model.dataset, year)
-    print(model.dataset[(model.dataset.O_GEOGRAPHY_CODE==model.dataset.D_GEOGRAPHY_CODE) 
-      & (model.dataset.O_GEOGRAPHY_CODE.isin(scenario_data.geographies()))][["O_GEOGRAPHY_CODE", "D_HOUSEHOLDS"]])
+    # print(model.dataset[(model.dataset.O_GEOGRAPHY_CODE==model.dataset.D_GEOGRAPHY_CODE) 
+    #   & (model.dataset.O_GEOGRAPHY_CODE.isin(scenario_data.geographies()))][["O_GEOGRAPHY_CODE", "D_HOUSEHOLDS"]])
     model.dataset = _compute_derived_factors(model.dataset)
     # recheck
     model.check_dataset()
@@ -288,9 +284,6 @@ def simim(params):
     emitter_values = get_named_values(model.dataset, params["emitters"])
     attractor_values = get_named_values(model.dataset, params["attractors"])
     model.dataset["POST_MIGRATIONS"] = model(emitter_values, attractor_values)
-
-    model.dataset.to_csv("dataset.csv", index=False)
-    exit(1)
 
     # compute migration inflows and outflow changes
     delta = pd.DataFrame({"o_lad16cd": model.dataset.O_GEOGRAPHY_CODE,
@@ -304,8 +297,8 @@ def simim(params):
     delta = delta.drop(["PEOPLE", "MIGRATIONS", "MIGRATION_RATE"], axis=1)
     
     # remove in-LAD migrations and sum
-    o_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
-    d_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
+    o_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
+    d_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
     delta = o_delta.merge(d_delta)
     # compute net migration change
     delta["net_delta"] = delta.o_delta - delta.d_delta
@@ -314,7 +307,10 @@ def simim(params):
     print("Change in migrations to scenario region: %.0f" % delta[delta["lad16cd"].isin(scenario_data.geographies())]["net_delta"].sum())
 
     # add to results
-    snpp = snpp.drop(['PEOPLE_PREV', 'PEOPLE_SNPP_PREV', 'DELTA_SNPP'], axis=1).merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
+    snpp = snpp.merge(model.dataset[["O_GEOGRAPHY_CODE", "O_PEOPLE"]], left_on="GEOGRAPHY_CODE", right_on="O_GEOGRAPHY_CODE")
+    print(snpp)
+    exit(1)
+    snpp = snpp.drop(['PEOPLE_PREV', 'PEOPLE_DELTA'], axis=1).merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
     snpp["PEOPLE"] += snpp["net_delta"]
     snpp.drop("net_delta", axis=1, inplace=True)
     input_data.append_output(snpp, year)
@@ -324,6 +320,8 @@ def simim(params):
 
     #break
 
+  model.dataset.to_csv("dataset.csv", index=False)
+  #exit(1)
   input_data.summarise_output(scenario_data)
 
   return model, input_data, delta

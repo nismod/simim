@@ -249,7 +249,7 @@ class Instance():
     horizon = self.custom_snpp_variant.PROJECTED_YEAR_NAME.unique().max()
     scen_horizon = min(horizon, scenario.data.YEAR.max())
     print("Cumulative scenario at %d" % scen_horizon)
-    print(scenario.data[scenario.data.YEAR == scen_horizon])
+    print(scenario.data.groupby("GEOGRAPHY_CODE").sum().drop("YEAR", axis=1))
     print("Summary at horizon year: %d" % horizon)
     print("In-region population changes:")
     inreg = self.custom_snpp_variant[(self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon)

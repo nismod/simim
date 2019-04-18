@@ -74,6 +74,7 @@ class Model:
 
     # append the model-fitted flows to the dataframe, prefixed with "MODEL_"
     self.dataset["MODEL_"+self.y_col] = self.impl.yhat
+    self.check_dataset()
 
   # The params array structure, based on N emissiveness factors and M attractiveness factors:
   #
