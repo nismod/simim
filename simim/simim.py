@@ -66,6 +66,7 @@ def _compute_derived_factors(dataset):
 
 def simim(params):
 
+  ox = pd.DataFrame()
   #pd.set_option('display.max_columns', None)
 
   # Differentiate between origin and destination values
@@ -170,7 +171,7 @@ def simim(params):
   dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
   dataset = _merge_factor(dataset, gva, ["GVA"])
 
-  dataset.to_csv("./dataset0.csv", index=False)
+  #dataset.to_csv("./dataset0.csv", index=False)
 
   model = models.Model(params["model_type"],
                        params["model_subtype"],
@@ -228,6 +229,7 @@ def simim(params):
     else:
       model.dataset["CHANGED_MIGRATIONS"] = 0
   
+    ox = ox.append(model.dataset[(model.dataset.O_GEOGRAPHY_CODE == model.dataset.D_GEOGRAPHY_CODE) & (model.dataset.O_GEOGRAPHY_CODE == "E07000178")])
 
     # compute migration inflows and outflow changes
     delta = pd.DataFrame({"o_lad16cd": model.dataset.O_GEOGRAPHY_CODE,
@@ -247,42 +249,48 @@ def simim(params):
     # compute net migration change
     delta["net_delta"] = delta.o_delta - delta.d_delta
 
-    print(delta[delta["lad16cd"].isin(scenario_data.geographies())])
+    #print(delta[delta["lad16cd"].isin(scenario_data.geographies())])
     print("Change in migrations to scenario region: %.0f" % delta[delta["lad16cd"].isin(scenario_data.geographies())]["net_delta"].sum())
 
-    # add to results
-    print(baseline_snpp.head())
+    # add to results and to model dataset
     custom_snpp = baseline_snpp.merge(model.dataset[["O_GEOGRAPHY_CODE", "O_PEOPLE"]].drop_duplicates(), left_on="GEOGRAPHY_CODE", right_on="O_GEOGRAPHY_CODE") \
       .rename({"PEOPLE": "PEOPLE_SNPP", "O_PEOPLE": "PEOPLE"}, axis=1)
     custom_snpp = custom_snpp.drop(["O_GEOGRAPHY_CODE"], axis=1).merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
     custom_snpp["PEOPLE"] += custom_snpp["net_delta"]
+    model.dataset = model.dataset.drop({"O_PEOPLE", "D_PEOPLE"}, axis=1) \
+                                 .merge(custom_snpp[["GEOGRAPHY_CODE", "PEOPLE"]].rename({"PEOPLE": "O_PEOPLE"}, axis=1), left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
+                                 .merge(custom_snpp[["GEOGRAPHY_CODE", "PEOPLE"]].rename({"PEOPLE": "D_PEOPLE"}, axis=1), left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
+                                 .drop({"GEOGRAPHY_CODE_x", "GEOGRAPHY_CODE_y"}, axis=1)
+    # model.dataset.to_csv("dataset.csv", index=False)
+    # exit(1)
+    # TODO why is net_delta still in the data (and with the wrong sign)
     custom_snpp.drop("net_delta", axis=1, inplace=True)
-    print(custom_snpp.head())
-    print(input_data.custom_snpp_variant.head())
+    #print(custom_snpp[custom_snpp.GEOGRAPHY_CODE.isin(scenario_data.geographies())])
     input_data.append_output(custom_snpp, year)
 
-    # now update baselines for following year
-    # # persist data from model but take relative SNPP change
-    # snpp_prev = input_data.get_people(year-1, geogs).rename({"PEOPLE": "PEOPLE_PREV"},axis=1)
-    # snpp = input_data.get_people(year, geogs)
-    # snpp = snpp.merge(snpp_prev, on="GEOGRAPHY_CODE")
-    # # relative delta
-    # snpp["PEOPLE_DELTA"] = snpp["PEOPLE"] / snpp["PEOPLE_PREV"]
-    # model.dataset = _merge_factor(model.dataset, snpp[["GEOGRAPHY_CODE", "PEOPLE_DELTA"]], ["PEOPLE_DELTA"])
-    # model.dataset = _apply_delta(model.dataset, "PEOPLE", relative=True)
+    # now update baselines for following year, unless we are in the final year
+    if year < end_year:
+      # persist data from model but take relative SNPP change
+      baseline_snpp_prev = input_data.get_people(year, geogs).rename({"PEOPLE": "PEOPLE_PREV"},axis=1)
+      baseline_snpp = input_data.get_people(year+1, geogs)
+      baseline_snpp = baseline_snpp.merge(baseline_snpp_prev, on="GEOGRAPHY_CODE")
+      # relative delta
+      baseline_snpp["PEOPLE_DELTA"] = baseline_snpp["PEOPLE"] / baseline_snpp["PEOPLE_PREV"]
+      model.dataset = _merge_factor(model.dataset, baseline_snpp[["GEOGRAPHY_CODE", "PEOPLE_DELTA"]], ["PEOPLE_DELTA"])
+      model.dataset = _apply_delta(model.dataset, "PEOPLE", relative=True)
 
-    # # absolute deltas
-    # snhp = _get_delta(input_data.get_households, "HOUSEHOLDS", year, geogs)
-    # model.dataset = _merge_factor(model.dataset, snhp, ["HOUSEHOLDS_DELTA"])
-    # model.dataset = _apply_delta(model.dataset, "HOUSEHOLDS")
+      # absolute deltas
+      snhp = _get_delta(input_data.get_households, "HOUSEHOLDS", year+1, geogs)
+      model.dataset = _merge_factor(model.dataset, snhp, ["HOUSEHOLDS_DELTA"])
+      model.dataset = _apply_delta(model.dataset, "HOUSEHOLDS")
 
-    # jobs = _get_delta(input_data.get_jobs, "JOBS", year, geogs)
-    # model.dataset = _merge_factor(model.dataset, jobs, ["JOBS_DELTA"])
-    # model.dataset = _apply_delta(model.dataset, "JOBS")
+      jobs = _get_delta(input_data.get_jobs, "JOBS", year+1, geogs)
+      model.dataset = _merge_factor(model.dataset, jobs, ["JOBS_DELTA"])
+      model.dataset = _apply_delta(model.dataset, "JOBS")
 
-    # gva = _get_delta(input_data.get_gva, "GVA", year, geogs)
-    # model.dataset = _merge_factor(model.dataset, gva, ["GVA_DELTA"])
-    # model.dataset = _apply_delta(model.dataset, "GVA")
+      gva = _get_delta(input_data.get_gva, "GVA", year+1, geogs)
+      model.dataset = _merge_factor(model.dataset, gva, ["GVA_DELTA"])
+      model.dataset = _apply_delta(model.dataset, "GVA")
 
     # # compute derived factors...
     # model.dataset = _compute_derived_factors(model.dataset)
@@ -310,13 +318,10 @@ def simim(params):
     # attractor_values = get_named_values(model.dataset, params["attractors"])
     # model.dataset["POST_MIGRATIONS"] = model(emitter_values, attractor_values)
 
-
-    #print(snpp[snpp.GEOGRAPHY_CODE.isin(scenario_data.geographies())])
-    #exit(1)
-
     #break
 
-  model.dataset.to_csv("dataset.csv", index=False)
+  #model.dataset.to_csv("dataset.csv", index=False)
+  ox.to_csv("ox.csv", index=False)
   #exit(1)
   input_data.summarise_output(scenario_data)
 

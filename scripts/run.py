@@ -22,7 +22,7 @@ def main(params):
     start_time = time.time()
 
     # TODO reorganise the data returned 
-    model, data, delta = simim.simim(params)
+    model, data, _ = simim.simim(params)
 
     print("done. Exec time(s): ", time.time() - start_time)
 
@@ -55,7 +55,10 @@ def main(params):
     # v.polygons((0,2), gdf, xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="lightgrey")
     # v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="orange")
     # v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="red")
-    gdf = data.get_shapefile().merge(delta)
+    delta = data.custom_snpp_variant[data.custom_snpp_variant.PROJECTED_YEAR_NAME == max(data.custom_snpp_variant.PROJECTED_YEAR_NAME.unique())]
+    gdf = data.get_shapefile().merge(delta, left_on="lad16cd", right_on="GEOGRAPHY_CODE")
+    gdf["net_delta"] = gdf.PEOPLE - gdf.PEOPLE_SNPP
+    print(delta.head())
     # net emigration in blue
     net_out = gdf[gdf.net_delta < 0.0]
     v.polygons((0,2), net_out, title="%s migration model implied impact on population" % params["model_type"], xlim=[120000, 670000], ylim=[0, 550000], 
