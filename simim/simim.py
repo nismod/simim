@@ -61,7 +61,7 @@ def _compute_derived_factors(dataset):
   # dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
 
   # distance decay function is exp(-ln(0.5)d/l) ensure half the attraction at distance l
-  dataset = dist_weighted_sum(dataset, "D_JOBS", 20.0, lambda l, d: np.exp(np.log(0.5) / l * d))
+  dataset = dist_weighted_sum(dataset, "D_JOBS", 5.0, lambda l, d: np.exp(np.log(0.5) / l * d))
   return dataset
 
 def simim(params):
@@ -171,6 +171,12 @@ def simim(params):
   dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
   dataset = _merge_factor(dataset, gva, ["GVA"])
 
+  # compute derived factors...
+  dataset = _compute_derived_factors(dataset)
+
+  dataset.to_csv("dataset0.csv", index=False)
+  
+  # constructor checks for no bad values in data
   model = models.Model(params["model_type"],
                        params["model_subtype"],
                        dataset,
@@ -197,13 +203,6 @@ def simim(params):
     print("alpha =", *model.alpha())
   print("beta = %f" % model.beta())
 
-  # TODO make a class method passing (and only computing) factors required for efficiency
-  # compute derived factors...
-  model.dataset = _compute_derived_factors(model.dataset)
-  
-  # check no bad values in data
-  model.check_dataset()
-
   # main loop
   for year in range(start_year, end_year + 1): 
 
@@ -223,7 +222,8 @@ def simim(params):
       # re-evaluate model and record changes
       emitter_values = get_named_values(model.dataset, params["emitters"])
       attractor_values = get_named_values(model.dataset, params["attractors"])
-      model.dataset["CHANGED_MIGRATIONS"] = model(emitter_values, attractor_values) - model_migrations_pre_scenario
+      # scale migrations according to observed value
+      model.dataset["CHANGED_MIGRATIONS"] = model.dataset["MIGRATIONS"] * (model(emitter_values, attractor_values) / model_migrations_pre_scenario - 1.0)
     else:
       model.dataset["CHANGED_MIGRATIONS"] = 0
   
@@ -289,34 +289,6 @@ def simim(params):
       gva = _get_delta(input_data.get_gva, "GVA", year+1, geogs)
       model.dataset = _merge_factor(model.dataset, gva, ["GVA_DELTA"])
       model.dataset = _apply_delta(model.dataset, "GVA")
-
-    # # compute derived factors...
-    # model.dataset = _compute_derived_factors(model.dataset)
-    
-    # # check no bad values in data
-    # model.check_dataset()
-
-    # # compute pre-scenario model migrations
-    # emitter_values = get_named_values(model.dataset, params["emitters"])
-    # attractor_values = get_named_values(model.dataset, params["attractors"])
-    # model.dataset["PRE_MIGRATIONS"] = model(emitter_values, attractor_values)
-
-    # # apply scenario and recompute derived factors
-    # # print(model.dataset[(model.dataset.O_GEOGRAPHY_CODE==model.dataset.D_GEOGRAPHY_CODE) 
-    # #   & (model.dataset.O_GEOGRAPHY_CODE.isin(scenario_data.geographies()))][["O_GEOGRAPHY_CODE", "D_HOUSEHOLDS"]])
-    # model.dataset = scenario_data.apply(model.dataset, year)
-    # # print(model.dataset[(model.dataset.O_GEOGRAPHY_CODE==model.dataset.D_GEOGRAPHY_CODE) 
-    # #   & (model.dataset.O_GEOGRAPHY_CODE.isin(scenario_data.geographies()))][["O_GEOGRAPHY_CODE", "D_HOUSEHOLDS"]])
-    # model.dataset = _compute_derived_factors(model.dataset)
-    # # recheck
-    # model.check_dataset()
-
-    # # re-evaluate model and record changes
-    # emitter_values = get_named_values(model.dataset, params["emitters"])
-    # attractor_values = get_named_values(model.dataset, params["attractors"])
-    # model.dataset["POST_MIGRATIONS"] = model(emitter_values, attractor_values)
-
-    #break
 
   #model.dataset.to_csv("dataset.csv", index=False)
   #ox.to_csv("ox.csv", index=False)
