@@ -51,14 +51,8 @@ def main(params):
     v.line((0,1), c.PROJECTED_YEAR_NAME, c.PEOPLE, "r", label="scenario")
     v.panel((0,1)).legend() #("b","r"), ("base", "scenario"))
 
-    # TODO change in population...
-    # v.polygons((0,2), gdf, xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="lightgrey")
-    # v.polygons((0,2), gdf[gdf.lad16cd.isin(arclads)], xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="orange")
-    # v.polygons((0,2), gdf[gdf.lad16cd.isin(ctrlads)], xlim=[120000, 670000], ylim=[0, 550000], linewidth=0.25, edgecolor="darkgrey", facecolor="red")
     delta = data.custom_snpp_variant[data.custom_snpp_variant.PROJECTED_YEAR_NAME == max(data.custom_snpp_variant.PROJECTED_YEAR_NAME.unique())]
     gdf = data.get_shapefile().merge(delta, left_on="lad16cd", right_on="GEOGRAPHY_CODE")
-    gdf["net_delta"] = gdf.PEOPLE - gdf.PEOPLE_SNPP
-    print(delta.head())
     # net emigration in blue
     net_out = gdf[gdf.net_delta < 0.0]
     v.polygons((0,2), net_out, title="%s migration model implied impact on population" % params["model_type"], xlim=[120000, 670000], ylim=[0, 550000], 

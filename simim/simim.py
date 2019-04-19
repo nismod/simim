@@ -66,7 +66,7 @@ def _compute_derived_factors(dataset):
 
 def simim(params):
 
-  ox = pd.DataFrame()
+  #ox = pd.DataFrame()
   #pd.set_option('display.max_columns', None)
 
   # Differentiate between origin and destination values
@@ -171,8 +171,6 @@ def simim(params):
   dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
   dataset = _merge_factor(dataset, gva, ["GVA"])
 
-  #dataset.to_csv("./dataset0.csv", index=False)
-
   model = models.Model(params["model_type"],
                        params["model_subtype"],
                        dataset,
@@ -229,7 +227,7 @@ def simim(params):
     else:
       model.dataset["CHANGED_MIGRATIONS"] = 0
   
-    ox = ox.append(model.dataset[(model.dataset.O_GEOGRAPHY_CODE == model.dataset.D_GEOGRAPHY_CODE) & (model.dataset.O_GEOGRAPHY_CODE == "E07000178")])
+    #ox = ox.append(model.dataset[(model.dataset.O_GEOGRAPHY_CODE == model.dataset.D_GEOGRAPHY_CODE) & (model.dataset.O_GEOGRAPHY_CODE == "E07000178")])
 
     # compute migration inflows and outflow changes
     delta = pd.DataFrame({"o_lad16cd": model.dataset.O_GEOGRAPHY_CODE,
@@ -321,8 +319,7 @@ def simim(params):
     #break
 
   #model.dataset.to_csv("dataset.csv", index=False)
-  ox.to_csv("ox.csv", index=False)
-  #exit(1)
+  #ox.to_csv("ox.csv", index=False)
   input_data.summarise_output(scenario_data)
 
   return model, input_data, delta

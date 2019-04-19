@@ -259,7 +259,7 @@ class Instance():
     print(inreg)
 
     print("10 largest migration origins:")
-    self.custom_snpp_variant["net_delta"] = self.custom_snpp_variant.PEOPLE_SNPP - self.custom_snpp_variant.PEOPLE
+    self.custom_snpp_variant["net_delta"] = self.custom_snpp_variant.PEOPLE - self.custom_snpp_variant.PEOPLE_SNPP
     print(self.custom_snpp_variant[self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon]
                             .nsmallest(10, "net_delta").drop("net_delta", axis=1))
 
