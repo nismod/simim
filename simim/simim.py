@@ -293,5 +293,8 @@ def simim(params):
   #model.dataset.to_csv("dataset.csv", index=False)
   #ox.to_csv("ox.csv", index=False)
   input_data.summarise_output(scenario_data)
+  if params["odmatrix"] is True:
+    input_data.write_odmatrix(model.dataset[["O_GEOGRAPHY_CODE","D_GEOGRAPHY_CODE","O_PEOPLE","D_PEOPLE","MIGRATIONS","CHANGED_MIGRATIONS"]])
+
 
   return model, input_data, delta

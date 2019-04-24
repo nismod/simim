@@ -267,3 +267,8 @@ class Instance():
     self.custom_snpp_variant.to_csv(self.output_file, index=False)
     #.drop(["net_delta","net_delta_prev","PEOPLE_prev"], axis=1).to_csv(self.output_file, index=False)
 
+  def write_odmatrix(self, odmatrix):
+    output_file = self.output_file.replace("simim_", "odmatrix_")
+
+    print("writing OD matrix to %s" % output_file)
+    odmatrix.to_csv(output_file, index=False)

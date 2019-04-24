@@ -22,7 +22,7 @@ def main(params):
     start_time = time.time()
 
     # TODO reorganise the data returned 
-    model, data, _ = simim.simim(params)
+    model, data, odmatrix = simim.simim(params)
 
     print("done. Exec time(s): ", time.time() - start_time)
 
@@ -67,6 +67,7 @@ def main(params):
     model_odmatrix = od_matrix(model.dataset, "MODEL_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
     v.matrix((1,1), np.log(model_odmatrix+1), cmap="Greys", xlabel="Destination", ylabel="Origin", title="%s model OD matrix (displaced log scale)" % params["model_type"])
     # construct new OD matrix
+    # TODO CHANGED_MIGRATIONS is zero in post-scenario years
     changed_odmatrix = od_matrix(model.dataset, "CHANGED_MIGRATIONS", "O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE")
     delta_odmatrix = changed_odmatrix - model_odmatrix
     # we get away with log here as no values are -ve
