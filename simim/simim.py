@@ -229,8 +229,8 @@ def simim(params):
     model.dataset = scenario_data.apply(model.dataset, year)
 
     # this is broken
-    #changed_attractor_values = get_named_values(model.dataset, params["attractors"], prefix="CHANGED_")
-    changed_attractor_values = model.dataset[["CHANGED_D_HOUSEHOLDS", "CHANGED_D_JOBS_DISTWEIGHTED"]]
+    changed_attractor_values = get_named_values(model.dataset, params["attractors"], prefix="CHANGED_")
+    #changed_attractor_values = model.dataset[["CHANGED_D_HOUSEHOLDS", "CHANGED_D_JOBS"]]
 
     #print(changed_attractor_values)
     # emission factors aren't impacted by the (immediate) scenario
@@ -264,8 +264,8 @@ def simim(params):
     snpp = snpp.merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
     input_data.append_output(snpp, year)
 
-    #break
-
   input_data.summarise_output(scenario_data)
 
-  return model, input_data, delta
+  #print(model.dataset[["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "O_PEOPLE", "D_PEOPLE", "MIGRATIONS", "CHANGED_MIGRATIONS"]].head())
+
+  return model, input_data, delta, model.dataset[["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "O_PEOPLE", "D_PEOPLE", "MIGRATIONS", "CHANGED_MIGRATIONS"]]

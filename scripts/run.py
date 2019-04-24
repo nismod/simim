@@ -22,7 +22,10 @@ def main(params):
     start_time = time.time()
 
     # TODO reorganise the data returned 
-    model, data, delta = simim.simim(params)
+    model, data, delta, odmatrix = simim.simim(params)
+
+    print("writing OD matrix to %s" % os.path.join(params["output_dir"], "odmatrix.csv"))
+    odmatrix.to_csv(os.path.join(params["output_dir"], "odmatrix.csv"), index=False)
 
     print("done. Exec time(s): ", time.time() - start_time)
 
