@@ -46,21 +46,21 @@ class Model:
       self.impl = Gravity(self.dataset[self.y_col].values, 
                           self.dataset[self.xo_cols].values, 
                           self.dataset[self.xd_cols].values, 
-                          self.dataset[self.cost_col].values, self.model_subtype)
+                          self.dataset[self.cost_col].values, self.model_subtype, Quasi=True)
     elif self.model_type == "production":
       assert(self.num_emit == 1)
       self.num_emit = len(self.dataset[self.xo_cols[0]].unique()) - 1
       self.impl = Production(self.dataset[self.y_col].values, 
                              self.dataset[self.xo_cols].values, 
                              self.dataset[self.xd_cols].values, 
-                             self.dataset[self.cost_col].values, self.model_subtype)
+                             self.dataset[self.cost_col].values, self.model_subtype, Quasi=True)
     elif self.model_type == "attraction":
       assert(self.num_attr == 1)
       self.num_attr = len(self.dataset[self.xd_cols[0]].unique()) - 1
       self.impl = Attraction(self.dataset[self.y_col].values, 
                              self.dataset[self.xd_cols].values, 
                              self.dataset[self.xo_cols].values, 
-                             self.dataset[self.cost_col].values, self.model_subtype)
+                             self.dataset[self.cost_col].values, self.model_subtype, Quasi=True)
     else: #model_type == "doubly":
       assert(self.num_emit == 1)
       self.num_emit = len(self.dataset[self.xo_cols[0]].unique()) - 1

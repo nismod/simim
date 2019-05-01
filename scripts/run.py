@@ -39,8 +39,8 @@ def main(params):
     # fig.suptitle("UK LAD SIMs using population as emitter, households as attractor")
     v = visuals.Visual(2,3)
 
-    v.scatter((0,0), model.dataset.MIGRATIONS, model.impl.yhat, "b.", title="%d %s migration model fit: R^2=%.2f" \
-      % (year, params["model_type"], model.impl.pseudoR2))
+    v.scatter((0,0), model.dataset.MIGRATIONS, model.impl.yhat, "b.", markersize=3, 
+      title="%d %s migration model fit: R^2=%.2f" % (year, params["model_type"], model.impl.pseudoR2))
     v.line((0,0), [0,max(model.dataset.MIGRATIONS)], [0,max(model.dataset.MIGRATIONS)], "k", xlabel="Observed", ylabel="Model", linewidth=0.25)
 
     # N.Herts = "E07000099"
@@ -77,7 +77,6 @@ def main(params):
 
     v.show()
     #v.to_png("doc/img/sim_basic.png")
-
 
 if __name__ == "__main__":
 

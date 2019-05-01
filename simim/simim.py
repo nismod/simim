@@ -192,6 +192,10 @@ def simim(params):
   # check recalculation matches the fitted values
   assert np.allclose(model.impl.yhat, model(emitter_values, attractor_values))
 
+  rho = np.corrcoef(model.impl.y[:,0], model.impl.yhat)[0,1]
+  print("NOTE: overriding model R2")
+  model.impl.pseudoR2 = rho**2
+
   # print the model params
   print("%d data %s/%s Poisson fit:\nR2 = %f, RMSE=%f" % (start_year, params["model_type"], params["model_subtype"], model.impl.pseudoR2, model.impl.SRMSE))
   print("k =", model.k())
