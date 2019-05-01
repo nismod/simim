@@ -241,7 +241,7 @@ def simim(params):
     # upscale delta by mover percentage at origin
     delta = pd.merge(delta, movers, left_on="o_lad16cd", right_index=True) 
     # TODO reinstate if necessary
-    #delta["delta"] = delta["delta"] / delta["MIGRATION_RATE"]
+    delta["delta"] /= 0.08 #delta["MIGRATION_RATE"]
     delta = delta.drop(["PEOPLE", "MIGRATIONS", "MIGRATION_RATE"], axis=1)
     
     # remove in-LAD migrations and sum
