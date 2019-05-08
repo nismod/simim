@@ -168,13 +168,13 @@ def simim(params):
   dataset = _merge_factor(od_2011, baseline_snpp, ["PEOPLE"])
   #print(dataset.head())
   dataset = _merge_factor(dataset, snhp, ["HOUSEHOLDS"]) 
-  dataset = _merge_factor(dataset, jobs, ["JOBS", "JOBS_PER_WORKING_AGE_PERSON"])
+  dataset = _merge_factor(dataset, jobs, ["JOBS"])
   dataset = _merge_factor(dataset, gva, ["GVA"])
 
   # compute derived factors...
   dataset = _compute_derived_factors(dataset)
 
-  dataset.to_csv("dataset0.csv", index=False)
+  #dataset.to_csv("dataset0.csv", index=False)
   
   # constructor checks for no bad values in data
   model = models.Model(params["model_type"],
@@ -297,7 +297,7 @@ def simim(params):
   #model.dataset.to_csv("dataset.csv", index=False)
   #ox.to_csv("ox.csv", index=False)
   input_data.summarise_output(scenario_data)
-  if params["odmatrix"] is True:
+  if "odmatrix" in params and params["odmatrix"] is True:
     input_data.write_odmatrix(model.dataset[["O_GEOGRAPHY_CODE","D_GEOGRAPHY_CODE","O_PEOPLE","D_PEOPLE","MIGRATIONS","CHANGED_MIGRATIONS"]])
 
 

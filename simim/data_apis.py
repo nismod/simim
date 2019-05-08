@@ -51,6 +51,13 @@ class Instance():
 
     self.snhp = SNHPData.SNHPData(self.cache_dir)
 
+    print("Using economic baseline data supplied by Cambridge Econometrics")
+    self.economic_data = pd.read_csv("./data/ce_gva_employment_baseline.csv") \
+      .drop(["lad11nm", "lad18nm", "lad11cd"], axis=1) \
+      .rename({"year": "YEAR", "lad18cd": "GEOGRAPHY_CODE", "employment": "JOBS", "gva": "GVA"}, axis=1)
+
+    # (hack) revert back to 2016 LAD codes for S12000015 and S12000024
+    self.economic_data.GEOGRAPHY_CODE.replace({"S12000047": "S12000015", "S12000048": "S12000024"}, inplace=True)
     # holder for shapefile when requested
     self.shapefile = None
 
@@ -162,47 +169,56 @@ class Instance():
 
     return allsnhp
 
-  def get_jobs(self, year, geogs):
-    """
-    NM57 has both total jobs and density*, but raw data needs to be unstacked for ease of use
-    *nomisweb: "Jobs density is the numbers of jobs per resident aged 16-64. For example, 
-    a job density of 1.0 would mean that there is one job for every resident of working age."
-    """
+  # def get_jobs(self, year, geogs):
+  #   """
+  #   NM57 has both total jobs and density*, but raw data needs to be unstacked for ease of use
+  #   *nomisweb: "Jobs density is the numbers of jobs per resident aged 16-64. For example, 
+  #   a job density of 1.0 would mean that there is one job for every resident of working age."
+  #   """
 
-    # http://www.nomisweb.co.uk/api/v01/dataset/NM_57_1.data.tsv?
-    # geography=1879048193...1879048573,1879048583,1879048574...1879048582&
-    # date=latest&
-    # item=1,3&measures=20100&
-    # select=date_name,geography_name,geography_code,item_name,measures_name,obs_value,obs_status_name
-    query_params = {
-      "date": "latest",
-      "item": "1,3",
-      "MEASURES": "20100",
-      "geography": "1879048193...1879048573,1879048583,1879048574...1879048582",
-      "select": "GEOGRAPHY_CODE,ITEM_NAME,OBS_VALUE"
-    }
-    jobs = self.census_ew.get_data("NM_57_1", query_params)
+  #   # http://www.nomisweb.co.uk/api/v01/dataset/NM_57_1.data.tsv?
+  #   # geography=1879048193...1879048573,1879048583,1879048574...1879048582&
+  #   # date=latest&
+  #   # item=1,3&measures=20100&
+  #   # select=date_name,geography_name,geography_code,item_name,measures_name,obs_value,obs_status_name
+  #   query_params = {
+  #     "date": "latest",
+  #     "item": "1,3",
+  #     "MEASURES": "20100",
+  #     "geography": "1879048193...1879048573,1879048583,1879048574...1879048582",
+  #     "select": "GEOGRAPHY_CODE,ITEM_NAME,OBS_VALUE"
+  #   }
+  #   jobs = self.census_ew.get_data("NM_57_1", query_params)
 
-    # aggregate census-merged LADs 'E06000053' 'E09000001'
-    jobs.loc[jobs.GEOGRAPHY_CODE=="E09000033", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].OBS_VALUE.sum()
-    jobs.loc[jobs.GEOGRAPHY_CODE=="E06000052", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].OBS_VALUE.sum()
+  #   # aggregate census-merged LADs 'E06000053' 'E09000001'
+  #   jobs.loc[jobs.GEOGRAPHY_CODE=="E09000033", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].OBS_VALUE.sum()
+  #   jobs.loc[jobs.GEOGRAPHY_CODE=="E06000052", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].OBS_VALUE.sum()
     
-    # TODO filter by geogs rather than hard-coding GB
-    jobs = jobs[jobs.GEOGRAPHY_CODE.isin(geogs)]
+  #   # TODO filter by geogs rather than hard-coding GB
+  #   jobs = jobs[jobs.GEOGRAPHY_CODE.isin(geogs)]
 
-    jobs = jobs.set_index(["GEOGRAPHY_CODE", "ITEM_NAME"]).unstack(level=-1).reset_index()
-    jobs.columns = jobs.columns.map("".join)
-    return jobs.rename({"OBS_VALUEJobs density": "JOBS_PER_WORKING_AGE_PERSON", "OBS_VALUETotal jobs": "JOBS"}, axis=1)
+  #   jobs = jobs.set_index(["GEOGRAPHY_CODE", "ITEM_NAME"]).unstack(level=-1).reset_index()
+  #   jobs.columns = jobs.columns.map("".join)
+  #   return jobs.rename({"OBS_VALUEJobs density": "JOBS_PER_WORKING_AGE_PERSON", "OBS_VALUETotal jobs": "JOBS"}, axis=1)
 
-  # temporarily loading from csv pending response from nomisweb
+  def get_jobs(self, year, geogs):
+    return self.economic_data[(self.economic_data.YEAR == year) & (self.economic_data.GEOGRAPHY_CODE.isin(geogs))].drop("GVA", axis=1)
+
+  # # temporarily loading from csv pending response from nomisweb
+  # def get_gva(self, year, geogs):
+  #   gva_all = pd.read_csv("./data/ons_gva1997-2015.csv")
+  #   if year > 2015:
+  #     print("using latest available (2015) GVA data")
+  #     year = 2015
+
+  #   # filter LADs and specific year
+  #   return gva_all[gva_all.GEOGRAPHY_CODE.isin(geogs)][["GEOGRAPHY_CODE", str(year)]].rename({str(year): "GVA"}, axis=1)
+
   def get_gva(self, year, geogs):
-    gva_all = pd.read_csv("./data/ons_gva1997-2015.csv")
-    if year > 2015:
-      print("using latest available (2015) GVA data")
-      year = 2015
-
-    # filter LADs and specific year
-    return gva_all[gva_all.GEOGRAPHY_CODE.isin(geogs)][["GEOGRAPHY_CODE", str(year)]].rename({str(year): "GVA"}, axis=1)
+    if year > 2050:
+      print("using latest available (2050) GVA projection")
+      year = 2050
+    return self.economic_data[(self.economic_data.YEAR == year) & (self.economic_data.GEOGRAPHY_CODE.isin(geogs))].drop("JOBS", axis=1)
 
   def get_shapefile(self, zip_url=None):
     """ 

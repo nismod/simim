@@ -1,9 +1,9 @@
 {
   "coverage": "GB",
-  "model_type": "production",
+  "model_type": "gravity",
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
-  "emitters": "GEOGRAPHY_CODE",
+  "emitters": "PEOPLE",
   "attractors": ["HOUSEHOLDS"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
