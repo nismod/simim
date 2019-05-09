@@ -8,7 +8,7 @@
   "cost": "DISTANCE",
   "base_projection": "ppp",
   "scenario_dir": "./data/scenarios",
-  "scenario": "scenario1e.csv",
+  "scenario": "scenario2e.csv",
   "end_year": 2050,
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data/output",

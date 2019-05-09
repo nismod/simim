@@ -55,10 +55,10 @@ def _compute_derived_factors(dataset):
   # dataset[DESTINATION_PREFIX + "HOUSEHOLDS_SIZE"] = dataset[DESTINATION_PREFIX + "HOUSEHOLDS"] / dataset.D_PEOPLE
   # dataset[DESTINATION_PREFIX + "JOBS_DENSITY"] = dataset[DESTINATION_PREFIX + "JOBS"] / dataset.D_AREA_KM2
 
-  # # London's high GVA does not prevent migration so we artificially reduce it
-  # dataset[DESTINATION_PREFIX + "GVA_EX_LONDON"] = dataset[DESTINATION_PREFIX + "GVA"]
-  # min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
-  # dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
+  # London's high GVA does not prevent migration so we artificially reduce it
+  dataset[DESTINATION_PREFIX + "GVA_EX_LONDON"] = dataset[DESTINATION_PREFIX + "GVA"]
+  min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
+  dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
 
   # distance decay function is exp(-ln(0.5)d/l) ensure half the attraction at distance l
   dataset = dist_weighted_sum(dataset, "D_JOBS", 5.0, lambda l, d: np.exp(np.log(0.5) / l * d))
