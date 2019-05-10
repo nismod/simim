@@ -49,7 +49,7 @@ def dist_weighted_sum(dataset, colname, halfdist, decay_function):
   dataset = dataset.merge(wsum, on="D_GEOGRAPHY_CODE") \
     .drop(colname + "_DISTWEIGHTED_x", axis=1) \
     .rename({colname + "_DISTWEIGHTED_y": colname + "_DISTWEIGHTED"}, axis=1)
-  dataset.to_csv("wdist.csv", index=False)
+  #dataset.to_csv("wdist.csv", index=False)
 
   return dataset
 

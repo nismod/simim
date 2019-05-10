@@ -4,13 +4,15 @@
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
   "emitters": ["PEOPLE"],
-  "attractors": ["HOUSEHOLDS", "JOBS"],
+  "attractors": ["HOUSEHOLDS", "JOBS_DISTWEIGHTED"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
   "scenario": "test.csv",
-  "end_year": 2040,
+  "end_year": 2050,
   "scenario_dir": "./data/scenarios",
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data/output",
+  "odmatrix": true,
   "graphics": true
 }
+

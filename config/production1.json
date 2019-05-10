@@ -12,5 +12,5 @@
   "end_year": 2050,
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data/output",
-  "graphics": true
+  "graphics": false
 }

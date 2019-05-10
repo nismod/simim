@@ -46,21 +46,21 @@ class Model:
       self.impl = Gravity(self.dataset[self.y_col].values, 
                           self.dataset[self.xo_cols].values, 
                           self.dataset[self.xd_cols].values, 
-                          self.dataset[self.cost_col].values, self.model_subtype)
+                          self.dataset[self.cost_col].values, self.model_subtype, Quasi=True)
     elif self.model_type == "production":
       assert(self.num_emit == 1)
       self.num_emit = len(self.dataset[self.xo_cols[0]].unique()) - 1
       self.impl = Production(self.dataset[self.y_col].values, 
                              self.dataset[self.xo_cols].values, 
                              self.dataset[self.xd_cols].values, 
-                             self.dataset[self.cost_col].values, self.model_subtype)
+                             self.dataset[self.cost_col].values, self.model_subtype, Quasi=True)
     elif self.model_type == "attraction":
       assert(self.num_attr == 1)
       self.num_attr = len(self.dataset[self.xd_cols[0]].unique()) - 1
       self.impl = Attraction(self.dataset[self.y_col].values, 
                              self.dataset[self.xd_cols].values, 
                              self.dataset[self.xo_cols].values, 
-                             self.dataset[self.cost_col].values, self.model_subtype)
+                             self.dataset[self.cost_col].values, self.model_subtype, Quasi=True)
     else: #model_type == "doubly":
       assert(self.num_emit == 1)
       self.num_emit = len(self.dataset[self.xo_cols[0]].unique()) - 1
@@ -74,6 +74,7 @@ class Model:
 
     # append the model-fitted flows to the dataframe, prefixed with "MODEL_"
     self.dataset["MODEL_"+self.y_col] = self.impl.yhat
+    self.check_dataset()
 
   # The params array structure, based on N emissiveness factors and M attractiveness factors:
   #
@@ -167,3 +168,7 @@ class Model:
     else:
       raise NotImplementedError("%s evaluation not implemented" % self.model_type)
 
+  def check_dataset(self):
+    if len(self.dataset[self.dataset.isnull().any(axis=1)]) > 0:
+      dataset.to_csv("dataset.csv")
+    assert len(self.dataset[self.dataset.isnull().any(axis=1)]) == 0, "Missing/invalid values in model dataset, dumping to dataset.csv and aborting"

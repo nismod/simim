@@ -4,13 +4,14 @@
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
   "emitters": "GEOGRAPHY_CODE",
-  "attractors": ["HOUSEHOLDS", "JOBS"],
+  "attractors": ["JOBS_DISTWEIGHTED"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
   "scenario_dir": "./data/scenarios",
-  "scenario": "scenario2j.csv",
+  "scenario": "scenario_j.csv",
   "end_year": 2050,
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data/output",
+  "odmatrix": false,
   "graphics": true
 }
