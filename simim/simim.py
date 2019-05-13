@@ -104,10 +104,22 @@ def simim(params):
   od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isnull()) & (~od_2011.O_GEOGRAPHY_CODE.isnull())]
   od_2011.drop(["ADDRESS_ONE_YEAR_AGO_CODE", "USUAL_RESIDENCE_CODE"], axis=1, inplace=True)
 
-  # TODO census merged LAD adjustments for Westminster/City of London and Cornwall/Scilly Isles
-  # for now just remove City & Scilly
-  od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E09000001") & (od_2011.D_GEOGRAPHY_CODE != "E09000001")]
-  od_2011 = od_2011[(od_2011.O_GEOGRAPHY_CODE != "E06000053") & (od_2011.D_GEOGRAPHY_CODE != "E06000053")]
+  # census merged LAD migrations are duplicated, so proportion them accoring to 2011 population ratios, 
+  # converting back to nearest integer (model requires int observations)
+  cmpops = input_data.get_people(2011, ["E09000001","E09000033"])
+  city_westminster_ratio = cmpops[cmpops.GEOGRAPHY_CODE == "E09000001"].PEOPLE.values[0] / cmpops.PEOPLE.sum()
+  cmpops = input_data.get_people(2011, ["E06000052", "E06000053"])
+  scilly_cornwall_ratio = cmpops[cmpops.GEOGRAPHY_CODE == "E06000053"].PEOPLE.values[0] / cmpops.PEOPLE.sum()
+  # (adjustments for Westminster/City of London and Cornwall/Scilly Isles)
+  od_2011.loc[od_2011.O_GEOGRAPHY_CODE == "E09000001", "MIGRATIONS"] *= city_westminster_ratio
+  od_2011.loc[od_2011.O_GEOGRAPHY_CODE == "E09000033", "MIGRATIONS"] *= 1 - city_westminster_ratio
+  od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E09000001", "MIGRATIONS"] *= city_westminster_ratio
+  od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E09000033", "MIGRATIONS"] *= 1 - city_westminster_ratio
+  od_2011.loc[od_2011.O_GEOGRAPHY_CODE == "E06000053", "MIGRATIONS"] *= scilly_cornwall_ratio
+  od_2011.loc[od_2011.O_GEOGRAPHY_CODE == "E06000052", "MIGRATIONS"] *= 1 - scilly_cornwall_ratio
+  od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E06000053", "MIGRATIONS"] *= scilly_cornwall_ratio
+  od_2011.loc[od_2011.D_GEOGRAPHY_CODE == "E06000052", "MIGRATIONS"] *= 1 - scilly_cornwall_ratio
+  od_2011.MIGRATIONS = od_2011.MIGRATIONS.round().astype(int)
 
   # get distances (url is GB ultra generalised clipped LAD boundaries/centroids)
   url = "https://opendata.arcgis.com/datasets/686603e943f948acaa13fb5d2b0f1275_4.zip?outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D"
@@ -299,8 +311,5 @@ def simim(params):
   input_data.summarise_output(scenario_data)
   if "odmatrix" in params and params["odmatrix"] is True:
     input_data.write_odmatrix(model.dataset[["O_GEOGRAPHY_CODE","D_GEOGRAPHY_CODE","O_PEOPLE","D_PEOPLE","MIGRATIONS","CHANGED_MIGRATIONS"]])
-
-
-  #print(model.dataset[["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "O_PEOPLE", "D_PEOPLE", "MIGRATIONS", "CHANGED_MIGRATIONS"]].head())
 
   return model, input_data, delta

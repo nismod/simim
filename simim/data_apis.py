@@ -104,8 +104,6 @@ class Instance():
 
     alldata = alldata.rename({"OBS_VALUE": "PEOPLE"}, axis=1).drop("PROJECTED_YEAR_NAME", axis=1)
 
-    # print(data.head())
-    # print(len(data))
     return alldata
 
   # this is 2011 census data
@@ -162,9 +160,6 @@ class Instance():
         snhp["PROJECTED_YEAR_NAME"] = year
         snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
 
-      # aggregate census-merged LADs 'E06000053' 'E09000001'
-      snhp.loc[snhp.GEOGRAPHY_CODE=="E09000033", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].HOUSEHOLDS.sum()
-      snhp.loc[snhp.GEOGRAPHY_CODE=="E06000052", "HOUSEHOLDS"] = snhp[snhp.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].HOUSEHOLDS.sum()
       allsnhp = allsnhp.append(snhp, ignore_index=True, sort=False)
 
     return allsnhp
@@ -280,7 +275,7 @@ class Instance():
                             .nsmallest(10, "net_delta").drop("net_delta", axis=1))
 
   def write_output(self):
-    self.custom_snpp_variant.to_csv(self.output_file, index=False)
+    self.custom_snpp_variant.drop(["PEOPLE_PREV", "PEOPLE_DELTA", "net_delta"], axis=1).to_csv(self.output_file, index=False)
     #.drop(["net_delta","net_delta_prev","PEOPLE_prev"], axis=1).to_csv(self.output_file, index=False)
 
   def write_odmatrix(self, odmatrix):
