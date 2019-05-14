@@ -139,30 +139,48 @@ class Instance():
     households.rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1, inplace=True)
     return households
 
-  def get_households(self, year, geogs): 
+  def get_households(self, year, geogs):
+      """Obtain actual and extrapolated household data for all other LADs
+      Arguments
+      ---------
+      year : int
+      geogs : list
+      Returns
+      -------
+      pandas.DataFrame
+      """
 
-    geogs = ukpoputils.split_by_country(geogs)
+      geogs = ukpoputils.split_by_country(geogs)
 
-    allsnhp = pd.DataFrame()
+      allsnhp = pd.DataFrame()
 
-    for country in geogs:
-      if not geogs[country]: continue
-      max_year= self.snhp.max_year(country)
+      for country in geogs:
+          if not geogs[country]: continue
+          max_year = self.snhp.max_year(country)
+          min_year = self.snhp.min_year(country)
 
-      if year <= max_year:
-        snhp = self.snhp.aggregate(geogs[country], year).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
-      else:
-        print("%d households for %s is extrapolated" % (year, country))
-        #print(self.snhp.aggregate(geogs[country], max_year))
-        snhp = self.snhp.aggregate(geogs[country], max_year-1).merge(self.snhp.aggregate(geogs[country], max_year), 
-          left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
-        snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (year - max_year)
-        snhp["PROJECTED_YEAR_NAME"] = year
-        snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
+          if year <= max_year:
+              if year <= min_year:
+                  snhp = self.snhp.aggregate(geogs[country], min_year+1).merge(
+                              self.snhp.aggregate(geogs[country], min_year),
+                              left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
+                  snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (min_year - year)
+                  snhp["PROJECTED_YEAR_NAME"] = year
+                  snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
+              else:
+                  snhp = self.snhp.aggregate(geogs[country], year).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
+          else:
+              snhp = self.snhp.aggregate(
+                  geogs[country], max_year-1).merge(
+                  self.snhp.aggregate(geogs[country], max_year),
+                  left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
+              snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (year - max_year)
+              snhp["PROJECTED_YEAR_NAME"] = year
+              snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
 
-      allsnhp = allsnhp.append(snhp, ignore_index=True, sort=False)
+          allsnhp = allsnhp.append(snhp, ignore_index=True, sort=False)
 
-    return allsnhp
+      return allsnhp
 
   # def get_jobs(self, year, geogs):
   #   """
