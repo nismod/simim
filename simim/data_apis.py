@@ -27,7 +27,7 @@ import simim.utils as utils
 class Instance():
   def __init__(self, params):
 
-    self.coverage = { "EW": ukpoputils.EW, "GB": ukpoputils.GB, "UK": ukpoputils.UK }.get(params["coverage"])
+    self.coverage = { "EW": ukpoputils.EW, "GB": ukpoputils.GB, "UK": ukpoputils.UK }.get(params["coverage"]) 
     if not self.coverage:
       raise RuntimeError("invalid coverage: %s" % params["coverage"])
 
@@ -38,8 +38,8 @@ class Instance():
     self.census_ni = NISRA.NISRA(self.cache_dir)
     # population projections
     self.mye = MYEData.MYEData(self.cache_dir)
-    self.snpp = SNPPData.SNPPData(self.cache_dir)
-    self.npp = NPPData.NPPData(self.cache_dir)
+    self.snpp = SNPPData.SNPPData(self.cache_dir) 
+    self.npp = NPPData.NPPData(self.cache_dir) 
     # households
     self.baseline = params["base_projection"]
 
@@ -88,7 +88,7 @@ class Instance():
       geogs = [geogs]
 
     geogs = ukpoputils.split_by_country(geogs)
-
+    
     alldata = pd.DataFrame()
     for country in geogs:
       # TODO variants...
@@ -135,60 +135,39 @@ class Instance():
       # print(households_ni)
       # print(len(households_ni))
       households = households.append(households_ni)
-
+      
     households.rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1, inplace=True)
     return households
 
-  def get_households(self, year, geogs):
-      """Obtain actual and extrapolated household data for all other LADs
+  def get_households(self, year, geogs): 
 
-      Arguments
-      ---------
-      year : int
-      geogs : list
+    geogs = ukpoputils.split_by_country(geogs)
 
-      Returns
-      -------
-      pandas.DataFrame
-      """
+    allsnhp = pd.DataFrame()
 
-      geogs = ukpoputils.split_by_country(geogs)
+    for country in geogs:
+      if not geogs[country]: continue
+      max_year= self.snhp.max_year(country)
 
-      allsnhp = pd.DataFrame()
+      if year <= max_year:
+        snhp = self.snhp.aggregate(geogs[country], year).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
+      else:
+        print("%d households for %s is extrapolated" % (year, country))
+        #print(self.snhp.aggregate(geogs[country], max_year))
+        snhp = self.snhp.aggregate(geogs[country], max_year-1).merge(self.snhp.aggregate(geogs[country], max_year), 
+          left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
+        snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (year - max_year)
+        snhp["PROJECTED_YEAR_NAME"] = year
+        snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
 
-      for country in geogs:
-          if not geogs[country]: continue
-          max_year = self.snhp.max_year(country)
-          min_year = self.snhp.min_year(country)
+      allsnhp = allsnhp.append(snhp, ignore_index=True, sort=False)
 
-          if year <= max_year:
-              if year <= min_year:
-                  snhp = self.snhp.aggregate(geogs[country], min_year+1).merge(
-                              self.snhp.aggregate(geogs[country], min_year),
-                              left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
-                  snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (min_year - year)
-                  snhp["PROJECTED_YEAR_NAME"] = year
-                  snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
-              else:
-                  snhp = self.snhp.aggregate(geogs[country], year).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
-          else:
-              snhp = self.snhp.aggregate(
-                  geogs[country], max_year-1).merge(
-                  self.snhp.aggregate(geogs[country], max_year),
-                  left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
-              snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (year - max_year)
-              snhp["PROJECTED_YEAR_NAME"] = year
-              snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
-
-          allsnhp = allsnhp.append(snhp, ignore_index=True, sort=False)
-
-      return allsnhp
-
+    return allsnhp
 
   # def get_jobs(self, year, geogs):
   #   """
   #   NM57 has both total jobs and density*, but raw data needs to be unstacked for ease of use
-  #   *nomisweb: "Jobs density is the numbers of jobs per resident aged 16-64. For example,
+  #   *nomisweb: "Jobs density is the numbers of jobs per resident aged 16-64. For example, 
   #   a job density of 1.0 would mean that there is one job for every resident of working age."
   #   """
 
@@ -209,7 +188,7 @@ class Instance():
   #   # aggregate census-merged LADs 'E06000053' 'E09000001'
   #   jobs.loc[jobs.GEOGRAPHY_CODE=="E09000033", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].OBS_VALUE.sum()
   #   jobs.loc[jobs.GEOGRAPHY_CODE=="E06000052", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].OBS_VALUE.sum()
-
+    
   #   # TODO filter by geogs rather than hard-coding GB
   #   jobs = jobs[jobs.GEOGRAPHY_CODE.isin(geogs)]
 
@@ -237,8 +216,8 @@ class Instance():
     return self.economic_data[(self.economic_data.YEAR == year) & (self.economic_data.GEOGRAPHY_CODE.isin(geogs))].drop("JOBS", axis=1)
 
   def get_shapefile(self, zip_url=None):
-    """
-    Gets and stores a shapefile from the given URL
+    """ 
+    Gets and stores a shapefile from the given URL 
     same shapefile can be subsequently retrieved by calling this function without the zip_url arg
     Fails if no url is supplied and none has previously been specified
     """
@@ -252,9 +231,9 @@ class Instance():
           for chunk in response.iter_content(chunk_size=1024):
             fd.write(chunk)
         print("downloaded OK")
-      else:
+      else: 
         print("using cached data: %s" % local_zipfile)
-
+      
       zip = zipfile.ZipFile(local_zipfile)
       #print(zip.namelist())
       # find a shapefile in the zip...
@@ -266,7 +245,7 @@ class Instance():
       self.shapefile = gpd.read_file(os.path.join(self.cache_dir, shapefile))
     return self.shapefile
 
-  def get_lad_lookup(self):
+  def get_lad_lookup(self): 
 
     lookup = pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
     # only need the CMLAD->LAD mapping
@@ -285,7 +264,7 @@ class Instance():
     print("Summary at horizon year: %d" % horizon)
     print("In-region population changes:")
     inreg = self.custom_snpp_variant[(self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon)
-                                   & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario.geographies()))]
+                                   & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario.geographies()))] 
     print("TOTAL: %.0f baseline vs %.0f scenario (increase of %.0f)"
       % (inreg.PEOPLE_SNPP.sum(), inreg.PEOPLE.sum(), inreg.PEOPLE.sum() - inreg.PEOPLE_SNPP.sum()))
     print(inreg)
