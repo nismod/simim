@@ -48,17 +48,34 @@ def main(params):
   output_files = list(glob.glob(os.path.join(output_dir, 'simim_*.csv')))
   for output_file in output_files:
     scenario = load_simim_output(output_file)
-    scenario = pd.concat([scenario, addition], axis=0, sort=True)
+    scenario = pd.concat(
+      [scenario, addition], axis=0, sort=False
+    ).sort_values(
+      ['timestep', 'lad_uk_2016']
+    )[['timestep', 'lad_uk_2016', 'population']]
     scenario.population = scenario.population.astype(int)
 
-    fname = "arc_population__{}".format(
-      os.path.basename(output_file).replace('simim_gravity_ppp_', ''))
+    # print(scenario.timestep.unique())
+    # print(len(scenario), len(scenario.lad_uk_2016.unique()), len(scenario.timestep.unique()))
+
+    key = os.path.basename(output_file).replace('simim_gravity_ppp_scenario', '').replace('.csv', '')
+    print(key)
+    name_lu = {
+      '0e': '0-unplanned',
+      '1e': '1-new-cities',
+      '2e': '2-expansion'
+    }
+    if key in name_lu:
+      fname = "arc_population__{}.csv".format(name_lu[key])
+    else:
+      fname = "arc_population__{}".format(key)
+
     scenario.to_csv(os.path.join(output_dir, fname), index=False)
 
 
 def get_mye(lad_cds):
   mye = MYEData()
-  years = range(2011, 2017)
+  years = range(2015, 2017)
   pop_mye = rename_columns(mye.aggregate(["GENDER", "C_AGE"], lad_cds, years))
   return pop_mye
 
