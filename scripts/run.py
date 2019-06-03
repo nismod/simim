@@ -30,7 +30,6 @@ def main(params):
     print("RUN FAILED: ", error)
     return
 
-  print("writing custom SNPP variant data to %s" % data.output_file)
   data.write_output()
 
   # visualise

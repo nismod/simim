@@ -46,7 +46,10 @@ class Instance():
     if not os.path.isdir(params["output_dir"]):
       raise ValueError("Output directory %s not found" % params["output_dir"])
 
-    self.output_file = os.path.join(params["output_dir"], "simim_%s_%s_%s" % (params["model_type"], params["base_projection"], os.path.basename(params["scenario"])))
+    self.disaggregated_output = params.get("disaggregated_output", False)
+
+    self.summary_output_file = os.path.join(params["output_dir"], "simim_%s_%s_%s" % (params["model_type"], params["base_projection"], os.path.basename(params["scenario"])))
+    self.disaggregated_output_file = os.path.join(params["output_dir"], "simim_detail_%s_%s_%s" % (params["model_type"], params["base_projection"], os.path.basename(params["scenario"])))
     self.custom_snpp_variant = pd.DataFrame()
 
     self.snhp = SNHPData.SNHPData(self.cache_dir)
@@ -140,47 +143,45 @@ class Instance():
     return households
 
   def get_households(self, year, geogs):
-      """Obtain actual and extrapolated household data for all other LADs
-      Arguments
-      ---------
-      year : int
-      geogs : list
-      Returns
-      -------
-      pandas.DataFrame
-      """
+    """Obtain actual and extrapolated household data for all other LADs
+    Arguments
+    ---------
+    year : int
+    geogs : list
+    Returns
+    -------
+    pandas.DataFrame
+    """
 
-      geogs = ukpoputils.split_by_country(geogs)
+    geogs = ukpoputils.split_by_country(geogs)
 
-      allsnhp = pd.DataFrame()
+    allsnhp = pd.DataFrame()
 
-      for country in geogs:
-          if not geogs[country]: continue
-          max_year = self.snhp.max_year(country)
-          min_year = self.snhp.min_year(country)
+    for country in geogs:
+      if not geogs[country]: continue
+      max_year = self.snhp.max_year(country)
+      min_year = self.snhp.min_year(country)
 
-          if year <= max_year:
-              if year <= min_year:
-                  snhp = self.snhp.aggregate(geogs[country], min_year+1).merge(
-                              self.snhp.aggregate(geogs[country], min_year),
-                              left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
-                  snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (min_year - year)
-                  snhp["PROJECTED_YEAR_NAME"] = year
-                  snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
-              else:
-                  snhp = self.snhp.aggregate(geogs[country], year).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
-          else:
-              snhp = self.snhp.aggregate(
-                  geogs[country], max_year-1).merge(
-                  self.snhp.aggregate(geogs[country], max_year),
-                  left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
-              snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (year - max_year)
-              snhp["PROJECTED_YEAR_NAME"] = year
-              snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
+      if year <= max_year:
+        if year <= min_year:
+          snhp = self.snhp.aggregate(geogs[country], min_year+1).merge(
+                      self.snhp.aggregate(geogs[country], min_year),
+                      left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
+          snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (min_year - year)
+          snhp["PROJECTED_YEAR_NAME"] = year
+          snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
+        else:
+          snhp = self.snhp.aggregate(geogs[country], year).rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1)
+      else:
+        snhp = self.snhp.aggregate(geogs[country], max_year-1) \
+                        .merge(self.snhp.aggregate(geogs[country], max_year),left_on="GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE")
+        snhp["HOUSEHOLDS"] = snhp.OBS_VALUE_y + (snhp.OBS_VALUE_y - snhp.OBS_VALUE_x) * (year - max_year)
+        snhp["PROJECTED_YEAR_NAME"] = year
+        snhp.drop(["PROJECTED_YEAR_NAME_x", "OBS_VALUE_x", "PROJECTED_YEAR_NAME_y", "OBS_VALUE_y"], axis=1, inplace=True)
 
-          allsnhp = allsnhp.append(snhp, ignore_index=True, sort=False)
+      allsnhp = allsnhp.append(snhp, ignore_index=True, sort=False)
 
-      return allsnhp
+    return allsnhp
 
   # def get_jobs(self, year, geogs):
   #   """
@@ -293,8 +294,42 @@ class Instance():
                             .nsmallest(10, "net_delta").drop("net_delta", axis=1))
 
   def write_output(self):
-    self.custom_snpp_variant.drop(["PEOPLE_PREV", "PEOPLE_DELTA", "net_delta"], axis=1).to_csv(self.output_file, index=False)
+    # save the summary info
+    print("writing summary custom SNPP variant data to %s" % self.summary_output_file)
+    self.custom_snpp_variant.drop(["PEOPLE_PREV", "PEOPLE_DELTA", "net_delta"], axis=1, inplace=True)
+    self.custom_snpp_variant["RELATIVE_DELTA"] = self.custom_snpp_variant.PEOPLE / self.custom_snpp_variant.PEOPLE_SNPP
+    self.custom_snpp_variant.to_csv(self.summary_output_file, index=False)
     #.drop(["net_delta","net_delta_prev","PEOPLE_prev"], axis=1).to_csv(self.output_file, index=False)
+
+    # disaggregated (by age & gender) output is large and requires work to generate so not produced unless specifically requested in config 
+    if self.disaggregated_output:
+      print("writing disaggregated custom SNPP variant data to %s" % self.disaggregated_output_file)
+      # get the baseline data by age/gender for all geogs and years
+      years =self.custom_snpp_variant.PROJECTED_YEAR_NAME.unique()
+      geogs = ukpoputils.split_by_country(self.custom_snpp_variant.GEOGRAPHY_CODE.unique())
+      alldata = pd.DataFrame()
+      for country in geogs:
+        # TODO variants...
+        if not geogs[country]: continue
+
+        mye_years, proj_years = ukpoputils.split_range(years, self.mye.max_year())
+        snpp_years, npp_years =  ukpoputils.split_range(proj_years, self.snpp.max_year(country))
+        #print(country, mye_years, snpp_years, npp_years)
+
+        data = pd.DataFrame()
+        if mye_years:
+          data = data.append(self.mye.filter(geogs[country], mye_years), ignore_index=True, sort=False)
+        if snpp_years:
+          data = data.append(self.snpp.filter(geogs[country], snpp_years), ignore_index=True, sort=False)
+        if npp_years:
+          print("%s population for %s is extrapolated" % (str(npp_years), country))
+          data = data.append(self.snpp.extrapolate(self.npp, geogs[country], npp_years), ignore_index=True, sort=False)
+        alldata = alldata.append(data, ignore_index=True, sort=False)
+
+      alldata = alldata.merge(self.custom_snpp_variant, left_on=["GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME"], right_on=["GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME"])
+      alldata.OBS_VALUE *= alldata.RELATIVE_DELTA
+      # leave RELATIVE_DELTA in data
+      alldata.drop(["PEOPLE_SNPP", "PEOPLE"], axis=1).to_csv(self.disaggregated_output_file, index=False)
 
   def write_odmatrix(self, odmatrix):
     output_file = self.output_file.replace("simim_", "odmatrix_")

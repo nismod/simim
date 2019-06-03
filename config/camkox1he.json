@@ -12,5 +12,7 @@
   "end_year": 2050,
   "cache_dir": "../microsimulation/cache",
   "output_dir": "./data/output",
+  "odmatrix": false,
+  "disaggregated_output": true,
   "graphics": false
 }
