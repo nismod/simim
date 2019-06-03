@@ -22,10 +22,10 @@ class Test(TestCase):
     x = np.random.normal(0,1,10000)
     y = np.random.normal(0,1,10000)
 
-    # R2
-    self.assertEqual(r2(x,x), 1.0)
-    self.assertEqual(r2(x,-x), 1.0) # rho=-1 
-    self.assertTrue(-0.0001 < r2(x,y) < 0.0001)
+    # R2 with self to 12dp, independent to 3dp
+    self.assertAlmostEqual(r2(x,x), 1.0, 12)
+    self.assertAlmostEqual(r2(x,-x), 1.0, 12) # rho=-1 
+    self.assertAlmostEqual(r2(x,y), 0.0, 3)
     # 
     rho = 0.5
     res = r2(x, rho * x + np.sqrt(1 - rho**2) * y)
