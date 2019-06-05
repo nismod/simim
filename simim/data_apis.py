@@ -333,7 +333,7 @@ class Instance():
       CustomSNPPData.register_custom_projection(self.custom_snpp_variant_name, alldata.drop(["PEOPLE_SNPP", "PEOPLE"], axis=1), self.cache_dir)
 
   def write_odmatrix(self, odmatrix):
-    output_file = self.output_file.replace("simim_", "odmatrix_")
+    output_file = self.summary_output_file.replace("simim_", "odmatrix_")
 
     print("writing OD matrix to %s" % output_file)
     odmatrix.to_csv(output_file, index=False)
