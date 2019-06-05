@@ -17,6 +17,7 @@ import ukcensusapi.NISRA as NISRA
 
 import ukpopulation.myedata as MYEData
 import ukpopulation.snppdata as SNPPData
+import ukpopulation.customsnppdata as CustomSNPPData
 import ukpopulation.nppdata as NPPData
 import ukpopulation.snhpdata as SNHPData
 
@@ -49,7 +50,7 @@ class Instance():
     self.disaggregated_output = params.get("disaggregated_output", False)
 
     self.summary_output_file = os.path.join(params["output_dir"], "simim_%s_%s_%s" % (params["model_type"], params["base_projection"], os.path.basename(params["scenario"])))
-    self.disaggregated_output_file = os.path.join(params["output_dir"], "simim_detail_%s_%s_%s" % (params["model_type"], params["base_projection"], os.path.basename(params["scenario"])))
+    self.custom_snpp_variant_name = "simim_%s" % os.path.basename(params["scenario"])[:-4]
     self.custom_snpp_variant = pd.DataFrame()
 
     self.snhp = SNHPData.SNHPData(self.cache_dir)
@@ -303,7 +304,7 @@ class Instance():
 
     # disaggregated (by age & gender) output is large and requires work to generate so not produced unless specifically requested in config 
     if self.disaggregated_output:
-      print("writing disaggregated custom SNPP variant data to %s" % self.disaggregated_output_file)
+      print("registering disaggregated custom SNPP variant data as %s with ukpopulation (cache_dir=%s)" % (self.custom_snpp_variant_name, self.cache_dir))
       # get the baseline data by age/gender for all geogs and years
       years =self.custom_snpp_variant.PROJECTED_YEAR_NAME.unique()
       geogs = ukpoputils.split_by_country(self.custom_snpp_variant.GEOGRAPHY_CODE.unique())
@@ -322,14 +323,14 @@ class Instance():
         if snpp_years:
           data = data.append(self.snpp.filter(geogs[country], snpp_years), ignore_index=True, sort=False)
         if npp_years:
-          print("%s population for %s is extrapolated" % (str(npp_years), country))
+          #print("%s population for %s is extrapolated" % (str(npp_years), country))
           data = data.append(self.snpp.extrapolate(self.npp, geogs[country], npp_years), ignore_index=True, sort=False)
         alldata = alldata.append(data, ignore_index=True, sort=False)
 
       alldata = alldata.merge(self.custom_snpp_variant, left_on=["GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME"], right_on=["GEOGRAPHY_CODE", "PROJECTED_YEAR_NAME"])
       alldata.OBS_VALUE *= alldata.RELATIVE_DELTA
       # leave RELATIVE_DELTA in data
-      alldata.drop(["PEOPLE_SNPP", "PEOPLE"], axis=1).to_csv(self.disaggregated_output_file, index=False)
+      CustomSNPPData.register_custom_projection(self.custom_snpp_variant_name, alldata.drop(["PEOPLE_SNPP", "PEOPLE"], axis=1), self.cache_dir)
 
   def write_odmatrix(self, odmatrix):
     output_file = self.output_file.replace("simim_", "odmatrix_")
