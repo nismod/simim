@@ -7,7 +7,7 @@ import time
 import numpy as np
 from simim import simim
 import simim.visuals as visuals
-from simim.utils import od_matrix, get_config
+from simim.utils import od_matrix, get_config, validate_config
 
 def main(params):
 
@@ -80,5 +80,6 @@ def main(params):
 if __name__ == "__main__":
 
   params = get_config()
+  validate_config(params)
   main(params)
 

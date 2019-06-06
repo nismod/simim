@@ -72,3 +72,12 @@ def get_config():
     params = json.load(config_file)
   return params
 
+# throws if problem with inputs, warns for untested settings
+def validate_config(params):
+  if params["coverage"] !="GB":
+    print('Coverage other than "GB" has not been properly tested, proceed with caution')
+
+  if params["model_type"] == "gravity" and "GEOGRAPHY_CODE" in params["emitters"]:
+    raise ValueError("Gravity (unconstrained) model requires numeric values for emission factor(s)")  
+  if params["model_type"] != "production" and params.emitters != ["GEOGRAPHY_CODE"]:
+    raise ValueError("production (constrained) model must use GEOGRAPHY_CODE for emission factor")
