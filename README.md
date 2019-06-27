@@ -9,7 +9,7 @@ This package aims to build a flexible custom population projection generation to
 
 The rationale is to take an official population projection (baseline or variant), internal migration data, and additional official figures for factors that may govern migration (employment, housing, GVA etc). The next step is to construct a spatial interaction model of internal migration from this data that meets some (arbitrary) goodness-of-fit criteria. 
 
-Following this, a scenario must be invented that captures some change or changes given by example a future infrastructure project, for example by increasing the housing stock and/or jobs in a specific region. By reapplying the model to the original input data with the scenario applied, a modified migration O-D matrix is generated.
+Following this, a scenario must be invented that captures some change or changes given by, for example, a future infrastructure project such as increasing the housing stock and jobs and in a specific region. By reapplying the model to the original input data with the scenario applied, a modified migration O-D matrix is generated.
 
 Finally, the change to the O-D matrix can be applied to the original population projection to create a custom variant. The nature of the model means that localised changes have a global impact - so the new variant projection applies to the whole country.
 
@@ -17,14 +17,27 @@ Scenarios can be cumulatively applied over a number of years, e.g. for a 5-year 
 
 Once a model has been established with a good fit to the data, the model can then be used to examine the (national) impact on migration of significant changes to infrastructure. As in the example illustrated above, changing the attractiveness parameters at a particular location or locations will result in the model producing a modified OD matrix. This data can then be used to create custom population projection variants at a subnational scale. These variant projections can then be integrated into the [ukpopulation](https://github.com/nismod/ukpopulation) package.
 
-Note that although all the base models are constrained to the total number of migrations, applying changes to the emissiveness or attractiveness values will not in general conserve the total. Thus the migrations can be increased or decreased in this methodology. Additionally, attraction- or doubly-constrained models are not suitable here as they do not allow for changes to attractiveness once the model has been calibrated.
+Note that although all the base models are constrained to the total number of migrations, applying changes to the emissiveness or attractiveness values will not in general conserve the total. Thus the migrations can be increased or decreased in this methodology. Additionally, attraction- or doubly-constrained models are not suitable here as they do not allow for changes to attractiveness once the model has been calibrated. Even production-constrained models are a limitation as the model progresses through time, since the increased migrations from a particular LAD should decrease over time to reflect that the population of the LAD is shrinking (or lower than the official projection).
 
 The primary case study for this work will be the proposed east-west arc [[1]](#references) (a.k.a. Cambridge-Milton Keynes-Oxford corridor).
 
 ## Caveats
-- the model can only be as good as the input data - not all input datasets are recent. The latest know dataset that captures intra-LAD migrations (which may become inter- under some scenario) is the 2011 census.  
+- the model can only be as good as the input data - not all input datasets are recent. The latest know dataset that captures intra-LAD migrations (which may become inter- under some scenario) is the 2011 census.
+- the model as it stands cannot capture the possibility of a wider impact of specific scenario: in other words, the attractiveness of a LAD could easily be influenced by new jobs in a neighbouring LAD. See [Further Development](#further-development)  
 - the model assumptions are quite simplistic, although inclusion of multiple emission/attraction factors can help.
 - the methodology cannot capture changes in fertility, mortality and international migration that a scenario might be expected to affect.
+
+## Further Development
+
+The limitation (mentioned in [Caveats](#caveats) above) that scenario changes can only influence the LAD in which they occur pervents the model from capturing effects such as the attractiveness of a particular LAD (as a place to live) may increase due to changes in neighbouring LADs (such as more jobs).
+
+This effect can be modelled by using, for example, a generalised 'job accessibility' measure, rather than absolute jobs, in the model. Typically this would be a cost-weighted sum of all employment in the entire country, with the cost a measure of commutability (travel time and/or cost). This can simply be added by multiplying the absolute job counts by an OD matrix of generalised costs. (Southampton have provided road but not rail data for this).
+
+Furthermore, this generalised job accessibility measure allows transport scenarios to be incorporated into the model. For example, the impact of an Oxford-Cambridge expressway could be expressed as a change to the commute cost OD matrix: values for trips between LADs along the route will be reduced.
+
+Thus a scenario where only jobs in Cambridge are increased would have no significant impact on say Oxford, since commuting between the two is not feasible with the current infrastructure. However, a scenario which also incudes a significant reduction in commute cost would see an impact on Oxford's attractiveness as a place to live. 
+
+For this to be implemented requires a cost matrix that incorporates all forms of travel. Crucially, rail travel cost data has not yet been provided.
 
 # Example
 
@@ -61,6 +74,8 @@ The example configuration file can be found [here](config/gravity.json).
 - **Specific modifications to the some or all of the above that describe a specific infrastructure scenario.**
 
 # Scenarios
+
+** awaiting updated scenarios from Cambridge Econometrics **
 
 ## Geography
 
