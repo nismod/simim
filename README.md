@@ -26,8 +26,11 @@ The primary case study for this work will be the proposed east-west arc [[1]](#r
 - the model as it stands cannot capture the possibility of a wider impact of specific scenario: in other words, the attractiveness of a LAD could easily be influenced by new jobs in a neighbouring LAD. See [Further Development](#further-development)  
 - the model assumptions are quite simplistic, although inclusion of multiple emission/attraction factors can help.
 - the methodology cannot capture changes in fertility, mortality and international migration that a scenario might be expected to affect.
+- the delta in migrations between the model under the scenario and the model under the baseline - which is key to generating the custom projection - is upscaled by the ratio of the total population in the LAD and the proportion that migrated in the previous year. This scaling produces changes in migration of the expected order of magnitude (given the housing/empoyment changes), but has yet to be fully justified.
 
 ## Further Development
+
+### Generalised Employment Accessibility
 
 The limitation (mentioned in [Caveats](#caveats) above) that scenario changes can only influence the LAD in which they occur pervents the model from capturing effects such as the attractiveness of a particular LAD (as a place to live) may increase due to changes in neighbouring LADs (such as more jobs).
 
@@ -38,6 +41,14 @@ Furthermore, this generalised job accessibility measure allows transport scenari
 Thus a scenario where only jobs in Cambridge are increased would have no significant impact on say Oxford, since commuting between the two is not feasible with the current infrastructure. However, a scenario which also incudes a significant reduction in commute cost would see an impact on Oxford's attractiveness as a place to live. 
 
 For this to be implemented requires a cost matrix that incorporates all forms of travel. Crucially, rail travel cost data has not yet been provided.
+
+### Justification of the migration delta scaling
+
+A convincing argument needs to be made to justify the upscaling of the change in migration caused by the scenario described in the [Caveats](#caveats) section. 
+
+### Updated Scenarios using new definition of region
+
+LADs in region has been redefined. Cambridge Econometrics are providing updated scenarios.
 
 # Example
 
