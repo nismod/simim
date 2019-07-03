@@ -235,6 +235,17 @@ class Instance():
       year = 2050
     return self.economic_data[(self.economic_data.YEAR == year) & (self.economic_data.GEOGRAPHY_CODE.isin(geogs))].drop("JOBS", axis=1)
 
+  def get_generalised_travel_cost(self):
+
+    # TODO load an OD matrix of generatlised travel costs per LAD...
+
+    # dummy this data for now (so that the code can be written)
+    # for now use the same structure as migration data and weights of 1 for intra-LAD, 0 otherwise
+    od = self.get_od().rename({"ADDRESS_ONE_YEAR_AGO_CODE": "O_GEOGRAPHY_CODE", "USUAL_RESIDENCE_CODE": "D_GEOGRAPHY_CODE", "OBS_VALUE": "GEN_TRAVEL_COST"}, axis=1)
+    od.GEN_TRAVEL_COST = 0.0
+    od.loc[od.O_GEOGRAPHY_CODE == od.D_GEOGRAPHY_CODE, "GEN_TRAVEL_COST"] = 1.0
+    return od
+
   def get_shapefile(self, zip_url=None):
     """ 
     Gets and stores a shapefile from the given URL 

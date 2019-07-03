@@ -44,6 +44,7 @@ def _apply_delta(dataset, factor_name, relative=False):
   return dataset
 
 def _compute_derived_factors(dataset):
+
   # Calculate some derived factors
   # dataset[ORIGIN_PREFIX + "PEOPLE_DENSITY"] = dataset[ORIGIN_PREFIX + "PEOPLE"] / dataset.O_AREA_KM2
   # dataset[ORIGIN_PREFIX + "HOUSEHOLDS_DENSITY"] = dataset[ORIGIN_PREFIX + "HOUSEHOLDS"] / dataset.O_AREA_KM2
@@ -183,11 +184,16 @@ def simim(params):
   dataset = _merge_factor(dataset, jobs, ["JOBS"])
   dataset = _merge_factor(dataset, gva, ["GVA"])
 
+  # adding generalised travel cost to dataset
+  dataset = dataset.merge(input_data.get_generalised_travel_cost(), on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"])
+
   # compute derived factors...
+  # TODO in this function also compute employment accessibility from get travel cost and num jobs
   dataset = _compute_derived_factors(dataset)
 
   #dataset.to_csv("dataset0.csv", index=False)
-  
+
+  # TODO config file needs to use the new job accessibility measure as an attractor (instead of just 'JOBS')
   # constructor checks for no bad values in data
   model = models.Model(params["model_type"],
                        params["model_subtype"],
@@ -229,6 +235,8 @@ def simim(params):
       attractor_values = get_named_values(model.dataset, params["attractors"])
       model_migrations_pre_scenario = model(emitter_values, attractor_values)
 
+
+      # NOTE derived factors will update here under scenario...
       # apply scenario and recompute derived factors
       model.dataset = scenario_data.apply(model.dataset, year)
       model.dataset = _compute_derived_factors(model.dataset)
