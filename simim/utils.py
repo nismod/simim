@@ -38,18 +38,15 @@ def calc_distances(gdf):
   dists.DISTANCE = dists.DISTANCE / 1000.0
   return dists
 
-def dist_weighted_sum(dataset, colname, halfdist, decay_function):
-  # exponential decay with half the attraction at 20km
-  # apart from London, which decays more slowly due to transport links and wages 
-  dataset["LEN"] = halfdist 
-  dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), "LEN"] = 2 * halfdist
+def cost_weighted_sum(dataset, colname, cost_colname):
+  # (travel) cost weighted sum of factor at destination
 
-  dataset[colname + "_DISTWEIGHTED"] = dataset[colname] * decay_function(dataset.LEN, dataset.DISTANCE)
-  wsum = dataset.groupby("D_GEOGRAPHY_CODE")[colname + "_DISTWEIGHTED"].sum().reset_index()
+  dataset[colname + "_COSTWEIGHTED"] = dataset[colname] / dataset[cost_colname]
+  wsum = dataset.groupby("D_GEOGRAPHY_CODE")[colname + "_COSTWEIGHTED"].sum().reset_index()
   dataset = dataset.merge(wsum, on="D_GEOGRAPHY_CODE") \
-    .drop(colname + "_DISTWEIGHTED_x", axis=1) \
-    .rename({colname + "_DISTWEIGHTED_y": colname + "_DISTWEIGHTED"}, axis=1)
-  #dataset.to_csv("wdist.csv", index=False)
+    .drop(colname + "_COSTWEIGHTED_x", axis=1) \
+    .rename({colname + "_COSTWEIGHTED_y": colname + "_COSTWEIGHTED"}, axis=1)
+  #dataset.to_csv("wcost.csv", index=False)
 
   return dataset
 

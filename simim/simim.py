@@ -12,7 +12,7 @@ import simim.models as models
 
 import ukpopulation.utils as ukpoputils
 
-from simim.utils import get_named_values, calc_distances, dist_weighted_sum
+from simim.utils import get_named_values, calc_distances, cost_weighted_sum
 
 ORIGIN_PREFIX = "O_"
 DESTINATION_PREFIX = "D_"
@@ -61,8 +61,9 @@ def _compute_derived_factors(dataset):
   min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
   dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
 
-  # distance decay function is exp(-ln(0.5)d/l) ensure half the attraction at distance l
-  dataset = dist_weighted_sum(dataset, "D_JOBS", 5.0, lambda l, d: np.exp(np.log(0.5) / l * d))
+  # D_JOBS_COSTWEIGHTED applys a generalised travel cost to OD trips which provides a measure of job accessibility at destination
+  # this attemptes to capture the possibility that a LAD may be made a more attractive place to live by increased jobs in a nearby LAD
+  dataset = cost_weighted_sum(dataset, "D_JOBS", "GEN_TRAVEL_COST")
   return dataset
 
 def simim(params):
