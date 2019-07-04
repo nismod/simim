@@ -94,28 +94,32 @@ The scenarios described below apply to all or part of the "CaMKOx" region define
 
 | Code    | Name                   |
 | ------- | ---------------------- |
-|E07000008|Cambridge
-|E07000177|Cherwell
-|E07000099|North Hertfordshire
-|E06000055|Bedford
-|E06000056|Central Bedfordshire
-|E07000012|South Cambridgeshire
-|E06000032|Luton
-|E07000179|South Oxfordshire
-|E07000004|Aylesbury Vale
-|E07000180|Vale of White Horse
-|E07000181|West Oxfordshire
-|E07000155|South Northamptonshire
-|E06000042|Milton Keynes
-|E07000178|Oxford
-|E06000030|Swindon
-|E07000151|Daventry
-|E07000154|Northampton
-|E07000156|Wellingborough
-|E07000009|East Cambridgeshire
-|E07000242|East Hertfordshire
-|E07000011|Huntingdonshire
-|E07000243|Stevenage
+|E06000031|	Peterborough
+|E06000032|	Luton
+|E06000042|	Milton Keynes
+|E06000055|	Bedford
+|E06000056|	Central Bedfordshire
+|E07000004|	Aylesbury Vale
+|E07000005|	Chiltern
+|E07000006|	South Bucks
+|E07000007|	Wycombe
+|E07000008|	Cambridge
+|E07000009|	East Cambridgeshire
+|E07000010|	Fenland
+|E07000011|	Huntingdonshire
+|E07000012|	South Cambridgeshire
+|E07000150|	Corby
+|E07000151|	Daventry
+|E07000152|	East Northamptonshire
+|E07000153|	Kettering
+|E07000154|	Northampton
+|E07000155|	South Northamptonshire
+|E07000156|	Wellingborough
+|E07000177|	Cherwell
+|E07000178|	Oxford
+|E07000179|	South Oxfordshire
+|E07000180|	Vale of White Horse
+|E07000181|	West Oxfordshire
 
 In the baseline (principal variant) projection, the population of this region grows from ~3.4M in 2016 to ~4.0M in 2050.
 
