@@ -56,12 +56,13 @@ class Instance():
     self.snhp = SNHPData.SNHPData(self.cache_dir)
 
     print("Using economic baseline data supplied by Cambridge Econometrics")
-    self.economic_data = pd.read_csv("./data/ce_gva_employment_baseline.csv") \
-      .drop(["lad11nm", "lad18nm", "lad11cd"], axis=1) \
-      .rename({"year": "YEAR", "lad18cd": "GEOGRAPHY_CODE", "employment": "JOBS", "gva": "GVA"}, axis=1)
+    # TODO test merged/updated gva/employment
+    gva = pd.read_csv("./data/arc/arc_gva__baseline.csv")
+    emp = pd.read_csv("./data/arc/arc_employment__baseline.csv")
+    self.economic_data = gva.merge(emp, on=["year", "lad_uk_2016"]).rename(
+      {"year": "YEAR", "lad_uk_2016": "GEOGRAPHY_CODE", "employment": "JOBS", "gva": "GVA"}, 
+      axis=1)
 
-    # (hack) revert back to 2016 LAD codes for S12000015 and S12000024
-    self.economic_data.GEOGRAPHY_CODE.replace({"S12000047": "S12000015", "S12000048": "S12000024"}, inplace=True)
     # holder for shapefile when requested
     self.shapefile = None
 
