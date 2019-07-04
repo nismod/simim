@@ -4,7 +4,7 @@
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
   "emitters": "GEOGRAPHY_CODE",
-  "attractors": ["JOBS_DISTWEIGHTED"],
+  "attractors": ["JOBS"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
   "scenario_dir": "./data/scenarios",

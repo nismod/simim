@@ -241,9 +241,11 @@ class Instance():
 
     # dummy this data for now (so that the code can be written)
     # for now use the same structure as migration data and weights of 1 for intra-LAD, ~infinite otherwise
-    od = self.get_od().rename({"ADDRESS_ONE_YEAR_AGO_CODE": "O_GEOGRAPHY_CODE", "USUAL_RESIDENCE_CODE": "D_GEOGRAPHY_CODE", "OBS_VALUE": "GEN_TRAVEL_COST"}, axis=1)
-    od.GEN_TRAVEL_COST = 1000000.0
-    od.loc[od.O_GEOGRAPHY_CODE == od.D_GEOGRAPHY_CODE, "GEN_TRAVEL_COST"] = 1.0
+    od = pd.read_csv("./data/od_gen_travel_cost.csv")
+    # od = self.get_od().rename({"ADDRESS_ONE_YEAR_AGO_CODE": "O_GEOGRAPHY_CODE", "USUAL_RESIDENCE_CODE": "D_GEOGRAPHY_CODE", "OBS_VALUE": "GEN_TRAVEL_COST"}, axis=1)
+    # print(od.O_GEOGRAPHY_CODE.unique())
+    # od.GEN_TRAVEL_COST = 1000000.0
+    # od.loc[od.O_GEOGRAPHY_CODE == od.D_GEOGRAPHY_CODE, "GEN_TRAVEL_COST"] = 1.0
     return od
 
   def get_shapefile(self, zip_url=None):

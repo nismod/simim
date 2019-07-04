@@ -106,6 +106,13 @@ def simim(params):
   od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isnull()) & (~od_2011.O_GEOGRAPHY_CODE.isnull())]
   od_2011.drop(["ADDRESS_ONE_YEAR_AGO_CODE", "USUAL_RESIDENCE_CODE"], axis=1, inplace=True)
 
+  # generate dummy generalised travel cost data
+  # gtc = od_2011.copy()
+  # gtc = gtc.rename({"MIGRATIONS": "GEN_TRAVEL_COST"}, axis=1)
+  # gtc.GEN_TRAVEL_COST = 100000.0 
+  # gtc.loc[gtc.O_GEOGRAPHY_CODE == gtc.D_GEOGRAPHY_CODE, "GEN_TRAVEL_COST"] = 1.0
+  # gtc.to_csv("./od_gen_travel_cost.csv", index=False)
+
   # census merged LAD migrations are duplicated, so proportion them accoring to 2011 population ratios, 
   # converting back to nearest integer (model requires int observations)
   cmpops = input_data.get_people(2011, ["E09000001","E09000033"])
@@ -185,7 +192,7 @@ def simim(params):
   dataset = _merge_factor(dataset, jobs, ["JOBS"])
   dataset = _merge_factor(dataset, gva, ["GVA"])
 
-  # adding generalised travel cost to dataset
+  # add generalised travel cost to dataset
   dataset = dataset.merge(input_data.get_generalised_travel_cost(), on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"])
 
   # compute derived factors...
