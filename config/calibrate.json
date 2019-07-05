@@ -10,7 +10,7 @@
   "scenario": "unit.csv",
   "end_year": 2022,
   "scenario_dir": "./data/scenarios",
-  "cache_dir": "../microsimulation/cache",
+  "cache_dir": "./data/cache",
   "output_dir": "./data/output",
   "odmatrix": false,
   "graphics": true

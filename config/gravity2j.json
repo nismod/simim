@@ -10,7 +10,7 @@
   "scenario": "test.csv",
   "end_year": 2050,
   "scenario_dir": "./data/scenarios",
-  "cache_dir": "../microsimulation/cache",
+  "cache_dir": "./data/cache",
   "output_dir": "./data/output",
   "graphics": true
 }
