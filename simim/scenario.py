@@ -6,6 +6,8 @@ Manages scenarios
 import pandas as pd
 
 class Scenario():
+  # TODO transport scenario - the scenario data likely in OD form (plus a time dimension) so will likely require a separate file
+  # TODO transport scenario data should not need to the full 380*380 entries, but the submatrix needs to be applied correctly to the overall travel cost matrix 
   def __init__(self, filename, model_factors):
     self.data = pd.read_csv(filename)
     if isinstance(model_factors, str):
@@ -39,6 +41,7 @@ class Scenario():
     """ Returns new scenario if there is data for the given year, otherwise returns the current (cumulative) scenario """
     self.current_time = year
     self.current_scenario = self.data[self.data.YEAR==year]
+    # TODO alos update the transport scenario data, if any
 
   def apply(self, dataset, year):
     # if no scenario for a year, reuse the most recent (cumulative) figures
@@ -63,6 +66,8 @@ class Scenario():
     for factor in self.factors:
       dataset["D_" + factor] += dataset[factor]
     dataset.drop(self.factors, axis=1, inplace=True)
+
+    # TODO apply transport scenario to the dataset (double check compute_derived_factors gets called after the update)
 
     return dataset
 
