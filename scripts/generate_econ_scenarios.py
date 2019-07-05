@@ -1,4 +1,4 @@
-"""Generate economic scenarios from Arc dwellings, employment, GVA data
+"""Generate economic scenarios from Ca-MK-Ox Arc dwellings, employment, GVA data
 """
 import pandas as pd
 

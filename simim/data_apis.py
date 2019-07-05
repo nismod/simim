@@ -56,11 +56,10 @@ class Instance():
     self.snhp = SNHPData.SNHPData(self.cache_dir)
 
     print("Using economic baseline data supplied by Cambridge Econometrics")
-    # TODO test merged/updated gva/employment
     gva = pd.read_csv("./data/arc/arc_gva__baseline.csv")
     emp = pd.read_csv("./data/arc/arc_employment__baseline.csv")
-    self.economic_data = gva.merge(emp, on=["year", "lad_uk_2016"]).rename(
-      {"year": "YEAR", "lad_uk_2016": "GEOGRAPHY_CODE", "employment": "JOBS", "gva": "GVA"}, 
+    self.economic_data = gva.merge(emp, on=["timestep", "lad_uk_2016"]).rename(
+      {"timestep": "YEAR", "lad_uk_2016": "GEOGRAPHY_CODE", "employment": "JOBS", "gva": "GVA", "gva_per_sector": "GVA"}, 
       axis=1)
 
     # holder for shapefile when requested
@@ -281,7 +280,7 @@ class Instance():
 
   def get_lad_lookup(self): 
 
-    lookup = pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
+    lookup = pd.read_csv("./data/gb_geog_lookup.csv.gz")
     # only need the CMLAD->LAD mapping
     return lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
 
