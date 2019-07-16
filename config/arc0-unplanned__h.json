@@ -14,6 +14,6 @@
   "cache_dir": "./data/cache",
   "output_dir": "./data/output",
   "odmatrix": false,
-  "disaggregated_output": true,
+  "disaggregated_output": false,
   "graphics": false
 }
