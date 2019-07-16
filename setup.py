@@ -35,7 +35,6 @@ setuptools.setup(name='simim',
                     'ukpopulation',
                     # for visualisation:
                     'matplotlib',
-                    'contextily',
                     'descartes'],
   classifiers=(
     "Programming Language :: Python :: 3",

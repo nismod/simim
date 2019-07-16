@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import geopandas
 import matplotlib.pyplot as plt
-import contextily as ctx
 import simim.data_apis as data_apis
 import simim.scenario as scenario
 import simim.models as models
