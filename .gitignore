@@ -103,5 +103,12 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# ignore output and cache
 data/output
 data/cache
+
+# ignore unused arc inputs
+data/arc/*_by_sector_*
+data/arc/arc_variants.csv
+data/arc/gb_baseline.csv
+data/arc/uk_baseline.csv
