@@ -53,9 +53,10 @@ def main(params):
     delta = data.custom_snpp_variant[data.custom_snpp_variant.PROJECTED_YEAR_NAME == max(data.custom_snpp_variant.PROJECTED_YEAR_NAME.unique())]
     gdf = data.get_shapefile().merge(delta, left_on="lad16cd", right_on="GEOGRAPHY_CODE")
     # net emigration in blue
+    gdf["net_delta"] = gdf.PEOPLE - gdf.PEOPLE_SNPP
     net_out = gdf[gdf.net_delta < 0.0]
     v.polygons((0,2), net_out, title="%s migration model implied impact on population" % params["model_type"], xlim=[120000, 670000], ylim=[0, 550000], 
-      values=-net_out.net_delta, clim=(0, np.max(-net_out.net_delta)), cmap="Blues", edgecolor="darkgrey", linewidth=0.25)
+      values=np.abs(net_out.net_delta), clim=(0, np.max(np.abs(net_out.net_delta))), cmap="Blues", edgecolor="darkgrey", linewidth=0.25)
     # net immigration in red
     net_in = gdf[gdf.net_delta >= 0.0] 
     v.polygons((0,2), net_in, xlim=[120000, 670000], ylim=[0, 550000], 
@@ -71,15 +72,16 @@ def main(params):
     delta_odmatrix = changed_odmatrix - model_odmatrix
     # we get away with log here as no values are -ve
     v.matrix((1,2), np.log(1+delta_odmatrix), cmap="Oranges", xlabel="Destination", ylabel="Origin", title="%s model perturbed OD matrix delta" % params["model_type"])
-    #absmax = max(np.max(delta_od),-np.min(delta_od))
-    #v.matrix((1,2), delta_od, 'RdBu', title="Gravity model perturbed OD matrix delta", clim=(-absmax/50,absmax/50))
 
-    v.show()
-    #v.to_png("doc/img/sim_basic.png")
+    if "scenario" in params:
+      scenario = params["scenario"].replace(".csv", "")
+    else:
+      scenario = "sim_basic"
+
+    v.to_png("doc/img/{}.png".format(scenario))
 
 if __name__ == "__main__":
 
   params = get_config()
   validate_config(params)
   main(params)
-
