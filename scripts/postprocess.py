@@ -68,7 +68,7 @@ def main(params):
     if key in name_lu:
       fname = "arc_population__{}.csv".format(name_lu[key])
     else:
-      fname = "arc_population__{}".format(key)
+      fname = "arc_population__{}.csv".format(key)
 
     scenario.to_csv(os.path.join(output_dir, fname), index=False)
 
