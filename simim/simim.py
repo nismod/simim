@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import geopandas
 import matplotlib.pyplot as plt
-import contextily as ctx
 import simim.data_apis as data_apis
 import simim.scenario as scenario
 import simim.models as models
@@ -194,6 +193,9 @@ def simim(params):
 
   # add generalised travel cost to dataset
   dataset = dataset.merge(input_data.get_generalised_travel_cost(), on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"])
+  # merge option to add generalised travel cost to dataset
+  # gen_cost = input_data.get_generalised_travel_cost(dataset)
+  # dataset = dataset.merge(gen_cost, on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"])
 
   # compute derived factors...
   # TODO in this function also compute employment accessibility from get travel cost and num jobs

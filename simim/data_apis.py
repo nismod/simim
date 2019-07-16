@@ -56,12 +56,12 @@ class Instance():
     self.snhp = SNHPData.SNHPData(self.cache_dir)
 
     print("Using economic baseline data supplied by Cambridge Econometrics")
-    self.economic_data = pd.read_csv("./data/ce_gva_employment_baseline.csv") \
-      .drop(["lad11nm", "lad18nm", "lad11cd"], axis=1) \
-      .rename({"year": "YEAR", "lad18cd": "GEOGRAPHY_CODE", "employment": "JOBS", "gva": "GVA"}, axis=1)
+    gva = pd.read_csv("./data/arc/arc_gva__baseline.csv")
+    emp = pd.read_csv("./data/arc/arc_employment__baseline.csv")
+    self.economic_data = gva.merge(emp, on=["timestep", "lad_uk_2016"]).rename(
+      {"timestep": "YEAR", "lad_uk_2016": "GEOGRAPHY_CODE", "employment": "JOBS", "gva": "GVA", "gva_per_sector": "GVA"}, 
+      axis=1)
 
-    # (hack) revert back to 2016 LAD codes for S12000015 and S12000024
-    self.economic_data.GEOGRAPHY_CODE.replace({"S12000047": "S12000015", "S12000048": "S12000024"}, inplace=True)
     # holder for shapefile when requested
     self.shapefile = None
 
@@ -236,15 +236,13 @@ class Instance():
     return self.economic_data[(self.economic_data.YEAR == year) & (self.economic_data.GEOGRAPHY_CODE.isin(geogs))].drop("JOBS", axis=1)
 
   def get_generalised_travel_cost(self):
-
-    # TODO load an OD matrix of generatlised travel costs per LAD...
-
-    # dummy this data for now (so that the code can be written)
-    # for now use the same structure as migration data and weights of 1 for intra-LAD, ~infinite otherwise
     od = pd.read_csv("./data/od_gen_travel_cost.csv")
-    # od = self.get_od().rename({"ADDRESS_ONE_YEAR_AGO_CODE": "O_GEOGRAPHY_CODE", "USUAL_RESIDENCE_CODE": "D_GEOGRAPHY_CODE", "OBS_VALUE": "GEN_TRAVEL_COST"}, axis=1)
-    # print(od.O_GEOGRAPHY_CODE.unique())
-    # od.GEN_TRAVEL_COST = 1000000.0
+
+    # merge option instead (requires dataset to be passed in)
+    # for now use the same structure as migration data and weights of 1 for intra-LAD, ~infinite otherwise
+    # dummy this data for now (so that the code can be written)
+    # od = dataset[["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].copy()
+    # od["GEN_TRAVEL_COST"] = 1e9
     # od.loc[od.O_GEOGRAPHY_CODE == od.D_GEOGRAPHY_CODE, "GEN_TRAVEL_COST"] = 1.0
     return od
 
@@ -280,7 +278,7 @@ class Instance():
 
   def get_lad_lookup(self): 
 
-    lookup = pd.read_csv("../microsimulation/persistent_data/gb_geog_lookup.csv.gz")
+    lookup = pd.read_csv("./data/gb_geog_lookup.csv.gz")
     # only need the CMLAD->LAD mapping
     return lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
 

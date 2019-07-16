@@ -1,15 +1,19 @@
 {
   "coverage": "GB",
-  "model_type": "production",
+  "model_type": "gravity",
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
-  "emitters": "GEOGRAPHY_CODE",
+  "emitters": "PEOPLE",
   "attractors": ["HOUSEHOLDS", "JOBS", "GVA"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
   "scenario_dir": "./data/scenarios",
-  "scenario": "scenario2.csv",
-  "cache_dir": "../microsimulation/cache",
+  "scenario": "scenario0-unplanned__gjh.csv",
+  "start_year": 2015,
+  "end_year": 2050,
+  "cache_dir": "./data/cache",
   "output_dir": "./data/output",
-  "graphics": true
+  "odmatrix": false,
+  "disaggregated_output": false,
+  "graphics": false
 }

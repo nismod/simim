@@ -39,7 +39,7 @@ cmladcodes = lookup["LAD"].unique()
 # print(cmladcodes)
 # print(len(cmladcodes))
 
-sc_geog_lookup = pd.read_csv("../microsimulation/cache/sc_lookup.csv") \
+sc_geog_lookup = pd.read_csv("./data/cache/sc_lookup.csv") \
                   .rename({"OutputArea": "OA","DataZone": "LSOA","InterZone": "MSOA", "Council": "LAD"}, axis=1)
 geog_lookup = pd.read_csv("../../Mistral/persistent_data/oa2011codes.csv.gz", compression="infer") \
                   .rename({"oa": "OA","lsoa": "LSOA","msoa": "MSOA", "la": "LAD"}, axis=1) \
@@ -75,8 +75,6 @@ print(len(geog_lookup.LAD.unique()))
 print(geog_lookup.head())
 print(geog_lookup[geog_lookup.LAD.str.startswith("S")].head())
 
-filename="../microsimulation/persistent_data/gb_geog_lookup.csv.gz"
+filename="./data/gb_geog_lookup.csv.gz"
 geog_lookup.to_csv(filename, index=False, compression="gzip")
 print("written to " + filename)
-
-

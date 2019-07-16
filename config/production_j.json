@@ -10,7 +10,7 @@
   "scenario_dir": "./data/scenarios",
   "scenario": "scenario_j.csv",
   "end_year": 2050,
-  "cache_dir": "../microsimulation/cache",
+  "cache_dir": "./data/cache",
   "output_dir": "./data/output",
   "odmatrix": false,
   "graphics": true

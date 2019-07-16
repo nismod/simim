@@ -1,27 +1,60 @@
-
+"""Generate economic scenarios from Ca-MK-Ox Arc dwellings, employment, GVA data
+"""
 import pandas as pd
 
-scenario_names = ["scenario0", "scenario1", "scenario2"]
 
-for scenario_name in scenario_names:
-  h_scenario = pd.read_csv("data/scenarios/%s.csv" % scenario_name)
-  arclads = h_scenario["GEOGRAPHY_CODE"].unique()
+def main():
+  scenario_names = ["0-unplanned", "1-new-cities", "2-expansion", "3-new-cities23", "4-expansion23"]
+  arclads = pd.read_csv("data/scenarios/camkox_lads.csv").geo_code.unique()
+  baseline = read_data("baseline", arclads)
 
-  # TODO this baseline seems (slightly?) inconsistent with the scenarios
-  baseline = pd.read_csv("data/ce_gva_employment_baseline.csv")
-  baseline = baseline[baseline.lad18cd.isin(arclads)].drop(["lad11nm", "lad11cd", "lad18nm"], axis=1).set_index(["year", "lad18cd"])
+  for scenario_name in scenario_names:
+    # read scenario data
+    scenario = read_data(scenario_name, arclads)
 
-  scenario = pd.read_csv("data/arc_gva_employment__%s.csv" % scenario_name)
-  scenario = scenario[scenario.lad18cd.isin(arclads)].drop(["lad11nm", "lad11cd", "lad18nm"], axis=1).set_index(["year", "lad18cd"])
+    # calculate diff from baseline, rounded as int
+    scenario = scenario.join(baseline, lsuffix="_scen", rsuffix="_base")
+    scenario["GVA"] = (scenario.gva_per_sector_scen - scenario.gva_per_sector_base).round().astype(int)
+    scenario["JOBS"] = ((scenario.employment_scen - scenario.employment_base) * 1000).round().astype(int)  # convert from 1000s jobs to jobs
+    scenario["HOUSEHOLDS"] = (scenario.dwellings_scen - scenario.dwellings_base).round().astype(int)
+    scenario = scenario[
+      ["GVA", "JOBS", "HOUSEHOLDS"]
+    ].reset_index().rename({"lad_uk_2016": "GEOGRAPHY_CODE", "timestep": "YEAR"}, axis=1)
 
-  scenario = scenario.join(baseline, lsuffix="_scen", rsuffix="_base")
-  scenario["GVA"] = scenario.gva_scen - scenario.gva_base
-  scenario["JOBS"] = scenario.employment_scen - scenario.employment_base
-  scenario = scenario.drop(["gva_scen", "gva_base", "employment_scen", "employment_base"], axis=1).reset_index().rename({"lad18cd": "GEOGRAPHY_CODE", "year": "YEAR"}, axis=1)
-  #print(scenario.loc[scenario.index.get_level_values("lad18cd") == "E07000008"])
-  scenario = scenario.merge(h_scenario, on=["YEAR", "GEOGRAPHY_CODE"])
-  print(h_scenario[h_scenario.GEOGRAPHY_CODE == "E07000178"])
-  print(scenario[scenario.GEOGRAPHY_CODE == "E07000178"])
+    # output households-only scenario
+    scenario[["YEAR", "GEOGRAPHY_CODE", "HOUSEHOLDS"]].to_csv(
+      "data/scenarios/scenario{}__h.csv".format(scenario_name), index=False)
 
-  scenario.to_csv("data/scenarios/%se.csv" % scenario_name, index=False)
+    # output households-gva-jobs scenarios
+    scenario.to_csv("data/scenarios/scenario{}__gjh.csv".format(scenario_name), index=False)
 
+
+def read_data(key, arclads):
+  """Read csvs and merge to single dataframe
+  """
+  # HACK hard-code match for economics scenarios against 23k dwellings scenarios
+  if key == "3-new-cities23":
+    econ_key = "1-new-cities"
+  elif key == "4-expansion23":
+    econ_key = "2-expansion"
+  else:
+    econ_key = key
+
+  df_gva = pd.read_csv("data/arc/arc_gva__{}.csv".format(econ_key))
+  df_emp = pd.read_csv("data/arc/arc_employment__{}.csv".format(econ_key))
+  df_dwl = pd.read_csv("data/arc/arc_dwellings__{}.csv".format(key))
+
+  # merge to single dataframe
+  df = df_gva.merge(
+    df_emp, on=["timestep", "lad_uk_2016"], how="left"
+  ).merge(
+    df_dwl, on=["timestep", "lad_uk_2016"], how="left"
+  )
+
+  # filter to include only Arc LADs
+  df = df[df.lad_uk_2016.isin(arclads)].set_index(["timestep", "lad_uk_2016"])
+
+  return df
+
+if __name__ == '__main__':
+  main()
