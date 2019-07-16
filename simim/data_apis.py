@@ -236,15 +236,13 @@ class Instance():
     return self.economic_data[(self.economic_data.YEAR == year) & (self.economic_data.GEOGRAPHY_CODE.isin(geogs))].drop("JOBS", axis=1)
 
   def get_generalised_travel_cost(self):
-
-    # TODO load an OD matrix of generatlised travel costs per LAD...
-
-    # dummy this data for now (so that the code can be written)
-    # for now use the same structure as migration data and weights of 1 for intra-LAD, ~infinite otherwise
     od = pd.read_csv("./data/od_gen_travel_cost.csv")
-    # od = self.get_od().rename({"ADDRESS_ONE_YEAR_AGO_CODE": "O_GEOGRAPHY_CODE", "USUAL_RESIDENCE_CODE": "D_GEOGRAPHY_CODE", "OBS_VALUE": "GEN_TRAVEL_COST"}, axis=1)
-    # print(od.O_GEOGRAPHY_CODE.unique())
-    # od.GEN_TRAVEL_COST = 1000000.0
+
+    # merge option instead (requires dataset to be passed in)
+    # for now use the same structure as migration data and weights of 1 for intra-LAD, ~infinite otherwise
+    # dummy this data for now (so that the code can be written)
+    # od = dataset[["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].copy()
+    # od["GEN_TRAVEL_COST"] = 1e9
     # od.loc[od.O_GEOGRAPHY_CODE == od.D_GEOGRAPHY_CODE, "GEN_TRAVEL_COST"] = 1.0
     return od
 

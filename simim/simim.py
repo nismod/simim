@@ -193,6 +193,9 @@ def simim(params):
 
   # add generalised travel cost to dataset
   dataset = dataset.merge(input_data.get_generalised_travel_cost(), on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"])
+  # merge option to add generalised travel cost to dataset
+  # gen_cost = input_data.get_generalised_travel_cost(dataset)
+  # dataset = dataset.merge(gen_cost, on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"])
 
   # compute derived factors...
   # TODO in this function also compute employment accessibility from get travel cost and num jobs
