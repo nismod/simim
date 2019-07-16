@@ -4,7 +4,7 @@ import pandas as pd
 
 
 def main():
-  scenario_names = ["0-unplanned", "1-new-cities", "2-expansion"]
+  scenario_names = ["0-unplanned", "1-new-cities", "2-expansion", "3-new-cities23", "4-expansion23"]
   arclads = pd.read_csv("data/scenarios/camkox_lads.csv").geo_code.unique()
   baseline = read_data("baseline", arclads)
 
@@ -12,11 +12,11 @@ def main():
     # read scenario data
     scenario = read_data(scenario_name, arclads)
 
-    # calculate diff from baseline
+    # calculate diff from baseline, rounded as int
     scenario = scenario.join(baseline, lsuffix="_scen", rsuffix="_base")
-    scenario["GVA"] = scenario.gva_per_sector_scen - scenario.gva_per_sector_base
-    scenario["JOBS"] = scenario.employment_scen - scenario.employment_base
-    scenario["HOUSEHOLDS"] = scenario.dwellings_scen - scenario.dwellings_base
+    scenario["GVA"] = (scenario.gva_per_sector_scen - scenario.gva_per_sector_base).round().astype(int)
+    scenario["JOBS"] = ((scenario.employment_scen - scenario.employment_base) * 1000).round().astype(int)  # convert from 1000s jobs to jobs
+    scenario["HOUSEHOLDS"] = (scenario.dwellings_scen - scenario.dwellings_base).round().astype(int)
     scenario = scenario[
       ["GVA", "JOBS", "HOUSEHOLDS"]
     ].reset_index().rename({"lad_uk_2016": "GEOGRAPHY_CODE", "timestep": "YEAR"}, axis=1)
@@ -30,8 +30,18 @@ def main():
 
 
 def read_data(key, arclads):
-  df_gva = pd.read_csv("data/arc/arc_gva__{}.csv".format(key))
-  df_emp = pd.read_csv("data/arc/arc_employment__{}.csv".format(key))
+  """Read csvs and merge to single dataframe
+  """
+  # HACK hard-code match for economics scenarios against 23k dwellings scenarios
+  if key == "3-new-cities23":
+    econ_key = "1-new-cities"
+  elif key == "4-expansion23":
+    econ_key = "2-expansion"
+  else:
+    econ_key = key
+
+  df_gva = pd.read_csv("data/arc/arc_gva__{}.csv".format(econ_key))
+  df_emp = pd.read_csv("data/arc/arc_employment__{}.csv".format(econ_key))
   df_dwl = pd.read_csv("data/arc/arc_dwellings__{}.csv".format(key))
 
   # merge to single dataframe
