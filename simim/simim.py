@@ -298,6 +298,8 @@ def simim(params):
       .merge(custom_snpp[["GEOGRAPHY_CODE", "PEOPLE"]].rename({"PEOPLE": "D_PEOPLE"}, axis=1), left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
       .drop({"GEOGRAPHY_CODE_x", "GEOGRAPHY_CODE_y"}, axis=1)
       
+    # TODO IDEA: merge emitters/attractors back on to custom_snpp for output/comparison as calculated
+
     input_data.append_output(custom_snpp, year)
 
     # now update baselines for following year, unless we are in the final year
