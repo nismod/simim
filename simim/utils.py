@@ -38,15 +38,20 @@ def calc_distances(gdf):
   dists.DISTANCE = dists.DISTANCE / 1000.0
   return dists
 
-def cost_weighted_sum(dataset, colname, cost_colname):
-  # (travel) cost weighted sum of factor at destination
+def access_weighted_sum(dataset, colname, access_colname):
+  # (travel) access-weighted sum of factor at destination
+  # access-to-x[d] = Sum over o { access[o,d] * x[o] }
+  new_colname = "D_{}_ACCESS".format(colname)
 
-  dataset[colname + "_COSTWEIGHTED"] = dataset[colname] / dataset[cost_colname]
-  wsum = dataset.groupby("D_GEOGRAPHY_CODE")[colname + "_COSTWEIGHTED"].sum().reset_index()
+  # access to x[o] for each o,d 
+  dataset[new_colname] = dataset["O_" + colname] * dataset[access_colname]
+  # sum over o - grouping by d
+  wsum = dataset[["D_GEOGRAPHY_CODE", new_colname]].groupby("D_GEOGRAPHY_CODE").sum().reset_index()
+
+  # merge back
   dataset = dataset.merge(wsum, on="D_GEOGRAPHY_CODE") \
-    .drop(colname + "_COSTWEIGHTED_x", axis=1) \
-    .rename({colname + "_COSTWEIGHTED_y": colname + "_COSTWEIGHTED"}, axis=1)
-  #dataset.to_csv("wcost.csv", index=False)
+    .drop(new_colname + "_x", axis=1) \
+    .rename({new_colname + "_y": new_colname}, axis=1)
 
   return dataset
 
