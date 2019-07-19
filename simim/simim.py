@@ -11,7 +11,7 @@ import simim.models as models
 
 import ukpopulation.utils as ukpoputils
 
-from simim.utils import get_named_values, calc_distances, cost_weighted_sum
+from simim.utils import get_named_values, calc_distances, access_weighted_sum
 
 ORIGIN_PREFIX = "O_"
 DESTINATION_PREFIX = "D_"
@@ -60,16 +60,15 @@ def _compute_derived_factors(dataset):
   min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
   dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
 
-  # D_JOBS_COSTWEIGHTED applys a generalised travel cost to OD trips which provides a measure of job accessibility at destination
-  # this attemptes to capture the possibility that a LAD may be made a more attractive place to live by increased jobs in a nearby LAD
-  dataset = cost_weighted_sum(dataset, "D_JOBS", "GEN_TRAVEL_COST")
+  # D_JOBS_ACCESS applies accessibility to OD trips which provides a measure of job
+  # accessibility at destination. This attemptes to capture the possibility that a LAD may be
+  # made a more attractive place to live by increased jobs in a nearby LAD
+  dataset = access_weighted_sum(dataset, "JOBS", "ACCESSIBILITY")
+  dataset = access_weighted_sum(dataset, "GVA", "ACCESSIBILITY")
+  # dataset.to_csv("debug_post-compute-derived-factors.csv")
   return dataset
 
 def simim(params):
-
-  #ox = pd.DataFrame()
-  #pd.set_option('display.max_columns', None)
-
   # Differentiate between origin and destination values
   # This allows use of e.g. derived values (e.g. population density) to be both an emitter and an attractor. Absolute values cannot (->singular matrix)
   # enure arrays
@@ -81,7 +80,16 @@ def simim(params):
   params["emitters"] = [ORIGIN_PREFIX + e for e in params["emitters"]]
   params["attractors"] = [DESTINATION_PREFIX + e for e in params["attractors"]]
 
-  scenario_data = scenario.Scenario(os.path.join(params["scenario_dir"], params["scenario"]), params["emitters"] + params["attractors"])
+  # optional OD scenario - for e.g. transport accessibility between pairs of zones
+  if "od_scenario" in params:
+    od_scenario_filename = os.path.join(params["scenario_dir"], params["od_scenario"])
+  else:
+    od_scenario_filename = None
+
+  scenario_data = scenario.Scenario(
+    os.path.join(params["scenario_dir"], params["scenario"]), 
+    params["emitters"] + params["attractors"],
+    od_scenario_filename)
 
   input_data = data_apis.Instance(params)
 
@@ -104,13 +112,6 @@ def simim(params):
 
   od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isnull()) & (~od_2011.O_GEOGRAPHY_CODE.isnull())]
   od_2011.drop(["ADDRESS_ONE_YEAR_AGO_CODE", "USUAL_RESIDENCE_CODE"], axis=1, inplace=True)
-
-  # generate dummy generalised travel cost data
-  # gtc = od_2011.copy()
-  # gtc = gtc.rename({"MIGRATIONS": "GEN_TRAVEL_COST"}, axis=1)
-  # gtc.GEN_TRAVEL_COST = 100000.0 
-  # gtc.loc[gtc.O_GEOGRAPHY_CODE == gtc.D_GEOGRAPHY_CODE, "GEN_TRAVEL_COST"] = 1.0
-  # gtc.to_csv("./od_gen_travel_cost.csv", index=False)
 
   # census merged LAD migrations are duplicated, so proportion them accoring to 2011 population ratios, 
   # converting back to nearest integer (model requires int observations)
@@ -168,8 +169,8 @@ def simim(params):
   # # ensure base dataset is sorted so that the mu/alphas for the constrained models are interpreted correctly
   # od_2011.sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"], inplace=True)
 
-  # use start year if defined in config, otherwise default to SNPP start year
-  start_year = params.get("start_year", input_data.snpp.min_year("en"))
+  # use start year if defined in config, otherwise default to economics scenario start year
+  start_year = params.get("start_year", input_data.economic_data.YEAR.min())
   if start_year > scenario_data.timeline()[0]:
     raise RuntimeError("start year for model run cannot be after start year of scenario")
   # use end year if defined in config, otherwise default to SNPP end year (up to 2039 due to Wales SNPP still being 2014-based)
@@ -191,19 +192,16 @@ def simim(params):
   dataset = _merge_factor(dataset, jobs, ["JOBS"])
   dataset = _merge_factor(dataset, gva, ["GVA"])
 
-  # add generalised travel cost to dataset
-  dataset = dataset.merge(input_data.get_generalised_travel_cost(), on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"])
-  # merge option to add generalised travel cost to dataset
-  # gen_cost = input_data.get_generalised_travel_cost(dataset)
-  # dataset = dataset.merge(gen_cost, on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"])
+  # add accessibility to dataset
+  dataset = dataset.merge(input_data.get_accessibility(dataset), on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"])
 
   # compute derived factors...
-  # TODO in this function also compute employment accessibility from get travel cost and num jobs
+  # - GVA ex-London
+  # - employment accessibility from accessibility and jobs
+  # - could include density-derived factors
   dataset = _compute_derived_factors(dataset)
+  # dataset.to_csv("debug_dataset-pre-model.csv")
 
-  #dataset.to_csv("dataset0.csv", index=False)
-
-  # TODO config file needs to use the new job accessibility measure as an attractor (instead of just 'JOBS')
   # constructor checks for no bad values in data
   model = models.Model(params["model_type"],
                        params["model_subtype"],
@@ -245,19 +243,22 @@ def simim(params):
       attractor_values = get_named_values(model.dataset, params["attractors"])
       model_migrations_pre_scenario = model(emitter_values, attractor_values)
 
-
-      # NOTE derived factors will update here under scenario...
+      # NOTE derived factors update here under scenario; previously derived values done with
+      # baseline updates below
+      
       # apply scenario and recompute derived factors
       model.dataset = scenario_data.apply(model.dataset, year)
       model.dataset = _compute_derived_factors(model.dataset)
-      # recheck
       model.check_dataset()
 
       # re-evaluate model and record changes
       emitter_values = get_named_values(model.dataset, params["emitters"])
       attractor_values = get_named_values(model.dataset, params["attractors"])
+      model_migrations_post_scenario = model(emitter_values, attractor_values)
+
       # scale migrations according to observed value
-      model.dataset["CHANGED_MIGRATIONS"] = model.dataset["MIGRATIONS"] * (model(emitter_values, attractor_values) / model_migrations_pre_scenario - 1.0)
+      model.dataset["CHANGED_MIGRATIONS"] = model.dataset["MIGRATIONS"] * (model_migrations_post_scenario / model_migrations_pre_scenario - 1.0)
+      # model.dataset.to_csv("debug_dataset-post-scenario-{}.csv".format(year))
     else:
       model.dataset["CHANGED_MIGRATIONS"] = 0
   
@@ -287,17 +288,16 @@ def simim(params):
     # add to results and to model dataset
     custom_snpp = baseline_snpp.merge(model.dataset[["O_GEOGRAPHY_CODE", "O_PEOPLE"]].drop_duplicates(), left_on="GEOGRAPHY_CODE", right_on="O_GEOGRAPHY_CODE") \
       .rename({"PEOPLE": "PEOPLE_SNPP", "O_PEOPLE": "PEOPLE"}, axis=1)
-    custom_snpp = custom_snpp.drop(["O_GEOGRAPHY_CODE"], axis=1).merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
+    custom_snpp = custom_snpp.drop(["O_GEOGRAPHY_CODE"], axis=1) \
+      .merge(delta, left_on="GEOGRAPHY_CODE", right_on="lad16cd").drop(["lad16cd", "o_delta", "d_delta"], axis=1)
     custom_snpp["PEOPLE"] += custom_snpp["net_delta"]
-    model.dataset = model.dataset.drop({"O_PEOPLE", "D_PEOPLE"}, axis=1) \
-                                 .merge(custom_snpp[["GEOGRAPHY_CODE", "PEOPLE"]].rename({"PEOPLE": "O_PEOPLE"}, axis=1), left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
-                                 .merge(custom_snpp[["GEOGRAPHY_CODE", "PEOPLE"]].rename({"PEOPLE": "D_PEOPLE"}, axis=1), left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
-                                 .drop({"GEOGRAPHY_CODE_x", "GEOGRAPHY_CODE_y"}, axis=1)
-    # model.dataset.to_csv("dataset.csv", index=False)
-    # exit(1)
-    # TODO why is net_delta still in the data (and with the wrong sign)
     custom_snpp.drop("net_delta", axis=1, inplace=True)
-    #print(custom_snpp[custom_snpp.GEOGRAPHY_CODE.isin(scenario_data.geographies())])
+
+    model.dataset = model.dataset.drop({"O_PEOPLE", "D_PEOPLE"}, axis=1) \
+      .merge(custom_snpp[["GEOGRAPHY_CODE", "PEOPLE"]].rename({"PEOPLE": "O_PEOPLE"}, axis=1), left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
+      .merge(custom_snpp[["GEOGRAPHY_CODE", "PEOPLE"]].rename({"PEOPLE": "D_PEOPLE"}, axis=1), left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
+      .drop({"GEOGRAPHY_CODE_x", "GEOGRAPHY_CODE_y"}, axis=1)
+      
     input_data.append_output(custom_snpp, year)
 
     # now update baselines for following year, unless we are in the final year
@@ -323,10 +323,12 @@ def simim(params):
       gva = _get_delta(input_data.get_gva, "GVA", year+1, geogs)
       model.dataset = _merge_factor(model.dataset, gva, ["GVA_DELTA"])
       model.dataset = _apply_delta(model.dataset, "GVA")
+      
+      # derived factors
+      model.dataset = _compute_derived_factors(model.dataset)
 
-  #model.dataset.to_csv("dataset.csv", index=False)
-  #ox.to_csv("ox.csv", index=False)
   input_data.summarise_output(scenario_data)
+
   if "odmatrix" in params and params["odmatrix"] is True:
     input_data.write_odmatrix(model.dataset[["O_GEOGRAPHY_CODE","D_GEOGRAPHY_CODE","O_PEOPLE","D_PEOPLE","MIGRATIONS","CHANGED_MIGRATIONS"]])
 
