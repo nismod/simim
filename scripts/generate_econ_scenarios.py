@@ -14,12 +14,42 @@ def main():
 
     # calculate diff from baseline, rounded as int
     scenario = scenario.join(baseline, lsuffix="_scen", rsuffix="_base")
-    scenario["GVA"] = (scenario.gva_per_sector_scen - scenario.gva_per_sector_base).round().astype(int)
-    scenario["JOBS"] = ((scenario.employment_scen - scenario.employment_base) * 1000).round().astype(int)  # convert from 1000s jobs to jobs
-    scenario["HOUSEHOLDS"] = (scenario.dwellings_scen - scenario.dwellings_base).round().astype(int)
+    scenario["GVA"] = (scenario.gva_per_sector_scen - scenario.gva_per_sector_base)
+    scenario["JOBS"] = (scenario.employment_scen - scenario.employment_base)
+    scenario["HOUSEHOLDS"] = (scenario.dwellings_scen - scenario.dwellings_base)
     scenario = scenario[
       ["GVA", "JOBS", "HOUSEHOLDS"]
     ].reset_index().rename({"lad_uk_2016": "GEOGRAPHY_CODE", "timestep": "YEAR"}, axis=1)
+
+    # Calculate year-on-year differences
+    years = list(reversed(sorted(scenario.YEAR.unique())))
+
+    df = scenario.pivot(index="GEOGRAPHY_CODE", columns="YEAR", values=["GVA", "JOBS", "HOUSEHOLDS"])
+    for i, year in enumerate(years):
+      for key in ["GVA", "JOBS", "HOUSEHOLDS"]:
+        if year == scenario.YEAR.min():
+          df[key][year] = 0
+        else:
+          df[key][year] = (df[key][year] - df[key][years[i + 1]])
+
+    unpivot = df[["GVA"]].reset_index() \
+        .melt(id_vars="GEOGRAPHY_CODE") \
+        [["GEOGRAPHY_CODE", "YEAR"]]
+
+    for key in ["GVA", "JOBS", "HOUSEHOLDS"]:
+      col = df[[key]].reset_index() \
+        .melt(id_vars="GEOGRAPHY_CODE") \
+        [["GEOGRAPHY_CODE", "YEAR", "value"]] \
+        .rename(columns={"value": key})        
+      unpivot = unpivot.merge(col, on=["GEOGRAPHY_CODE", "YEAR"])
+    
+    scenario = unpivot
+    scenario["GVA"] = scenario["GVA"].round(6)
+    scenario["JOBS"] = (scenario["JOBS"] * 1000).round().astype(int)  # convert from 1000s jobs to jobs
+    scenario["HOUSEHOLDS"] = scenario["HOUSEHOLDS"].round().astype(int)
+    
+    # Filter to include only 2019 and later
+    scenario = scenario[scenario.YEAR >= 2019]
 
     # output households-only scenario
     scenario[["YEAR", "GEOGRAPHY_CODE", "HOUSEHOLDS"]].to_csv(
