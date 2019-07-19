@@ -61,6 +61,12 @@ class Instance():
     # holder for shapefile when requested
     self.shapefile = None
 
+    self.accessibility = pd.read_csv("./data/arc/accessBaseline.csv").rename(columns={
+      "ORIGIN_ZONE_CODE": "O_GEOGRAPHY_CODE",
+      "DESTINATION_ZONE_CODE": "D_GEOGRAPHY_CODE",
+      "GENERALISED_TRAVEL_COST": "ACCESSIBILITY"
+    })
+
   def get_od(self):
 
     # get OD data
@@ -221,15 +227,14 @@ class Instance():
       year = 2050
     return self.economic_data[(self.economic_data.YEAR == year) & (self.economic_data.GEOGRAPHY_CODE.isin(geogs))].drop("JOBS", axis=1)
 
-  def get_generalised_travel_cost(self):
-    od = pd.read_csv("./data/od_gen_travel_cost.csv")
+  def get_accessibility(self, dataset):
+    od = self.accessibility
 
-    # merge option instead (requires dataset to be passed in)
-    # for now use the same structure as migration data and weights of 1 for intra-LAD, ~infinite otherwise
-    # dummy this data for now (so that the code can be written)
+    # Dummy data option (requires dataset to be passed in)
+    # use the same structure as migration data and accessibility of 1 for intra-LAD, 0 otherwise
     # od = dataset[["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].copy()
-    # od["GEN_TRAVEL_COST"] = 1e9
-    # od.loc[od.O_GEOGRAPHY_CODE == od.D_GEOGRAPHY_CODE, "GEN_TRAVEL_COST"] = 1.0
+    # od["ACCESSIBILITY"] = 0.0
+    # od.loc[od.O_GEOGRAPHY_CODE == od.D_GEOGRAPHY_CODE, "ACCESSIBILITY"] = 1.0
     return od
 
   def get_shapefile(self, zip_url=None):
@@ -263,7 +268,6 @@ class Instance():
     return self.shapefile
 
   def get_lad_lookup(self): 
-
     lookup = pd.read_csv("./data/gb_geog_lookup.csv.gz")
     # only need the CMLAD->LAD mapping
     return lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
@@ -297,7 +301,6 @@ class Instance():
     self.custom_snpp_variant.drop(["PEOPLE_PREV", "PEOPLE_DELTA", "net_delta"], axis=1, inplace=True)
     self.custom_snpp_variant["RELATIVE_DELTA"] = self.custom_snpp_variant.PEOPLE / self.custom_snpp_variant.PEOPLE_SNPP
     self.custom_snpp_variant.to_csv(self.summary_output_file, index=False)
-    #.drop(["net_delta","net_delta_prev","PEOPLE_prev"], axis=1).to_csv(self.output_file, index=False)
 
     # disaggregated (by age & gender) output is large and requires work to generate so not produced unless specifically requested in config 
     if self.disaggregated_output:
