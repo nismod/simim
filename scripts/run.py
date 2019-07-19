@@ -55,15 +55,18 @@ def main(params):
 
     delta = data.custom_snpp_variant[data.custom_snpp_variant.PROJECTED_YEAR_NAME == max(data.custom_snpp_variant.PROJECTED_YEAR_NAME.unique())]
     gdf = data.get_shapefile().merge(delta, left_on="lad16cd", right_on="GEOGRAPHY_CODE")
+    # work with density for clearer plotting
+    gdf["PEOPLE_DENSITY"] = gdf.PEOPLE / gdf.st_areasha
+    gdf["PEOPLE_SNPP_DENSITY"] = gdf.PEOPLE_SNPP / gdf.st_areasha
     # net emigration in blue
-    gdf["net_delta"] = gdf.PEOPLE - gdf.PEOPLE_SNPP
+    gdf["net_delta"] = gdf.PEOPLE_DENSITY - gdf.PEOPLE_SNPP_DENSITY
     print("net_delta between", gdf.net_delta.min(), gdf.net_delta.max())
-    net_out = gdf[gdf.net_delta < 0.0]
+    net_out = gdf[gdf.net_delta <= 0.0]
     print("net out", len(net_out))
     v.polygons((0,2), net_out, title="%s migration model implied impact on population" % params["model_type"], xlim=[120000, 670000], ylim=[0, 550000], 
       values=np.abs(net_out.net_delta), clim=(0, np.max(np.abs(net_out.net_delta))), cmap="Blues", edgecolor="white", linewidth=0.1)
     # net immigration in red
-    net_in = gdf[gdf.net_delta >= 0.0] 
+    net_in = gdf[gdf.net_delta > 0.0] 
     print("net in", len(net_in))
     v.polygons((0,2), net_in, xlim=[120000, 670000], ylim=[0, 550000], 
       values=net_in.net_delta, clim=(0, np.max(net_in.net_delta)), cmap="Reds", edgecolor="white", linewidth=0.1)
