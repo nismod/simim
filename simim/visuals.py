@@ -11,6 +11,7 @@ class Visual:
     self.rows = rows
     self.cols = cols
     self.fig, self.axes = plt.subplots(nrows=rows, ncols=cols, figsize=(cols*panel_x, rows*panel_y), sharex=False, sharey=False)
+    self.fig.patch.set_facecolor('white')
 
   def panel(self, index):
     # deal with non-array case
@@ -80,6 +81,8 @@ class Visual:
     ax = self.panel(panel)
     ax.set_xticks([])
     ax.set_yticks([])
+    ax.set_facecolor('xkcd:cerulean')
+    ax.set_aspect('equal', adjustable='datalim')
     if title:
       ax.set_title(title)
     if xlim:
