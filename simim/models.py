@@ -170,5 +170,5 @@ class Model:
 
   def check_dataset(self):
     if len(self.dataset[self.dataset.isnull().any(axis=1)]) > 0:
-      self.dataset.to_csv("dataset.csv")
+      self.dataset.to_csv("debug_dataset-check-fail.csv")
     assert len(self.dataset[self.dataset.isnull().any(axis=1)]) == 0, "Missing/invalid values in model dataset, dumping to dataset.csv and aborting"
