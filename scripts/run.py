@@ -78,7 +78,9 @@ def main(params):
     else:
       scenario = "sim_basic"
 
-    v.to_png("doc/img/{}.png".format(scenario))
+    if not os.path.isdir("doc/img/run"):
+      os.mkdir("doc/img/run")
+    v.to_png("doc/img/run/{}_{}.png".format(scenario, "-".join(params["attractors"])))
 
 if __name__ == "__main__":
 
