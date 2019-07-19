@@ -94,5 +94,5 @@ class Visual:
     plt.show()
 
   def to_png(self, filename):
-    self.fig.savefig(filename, transparent=True)
-
+    plt.tight_layout()
+    self.fig.savefig(filename)
