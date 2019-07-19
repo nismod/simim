@@ -76,5 +76,5 @@ def validate_config(params):
 
   if params["model_type"] == "gravity" and "GEOGRAPHY_CODE" in params["emitters"]:
     raise ValueError("Gravity (unconstrained) model requires numeric values for emission factor(s)")  
-  if params["model_type"] == "production" and (params["emitters"] != ["GEOGRAPHY_CODE"] or params["emitters"] != "GEOGRAPHY_CODE"):
+  if params["model_type"] == "production" and not (params["emitters"] == ["GEOGRAPHY_CODE"] or params["emitters"] == "GEOGRAPHY_CODE"):
     raise ValueError("production (constrained) model must use GEOGRAPHY_CODE for emission factor")
