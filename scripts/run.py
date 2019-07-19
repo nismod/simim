@@ -54,11 +54,14 @@ def main(params):
     gdf = data.get_shapefile().merge(delta, left_on="lad16cd", right_on="GEOGRAPHY_CODE")
     # net emigration in blue
     gdf["net_delta"] = gdf.PEOPLE - gdf.PEOPLE_SNPP
+    print("net_delta between", gdf.net_delta.min(), gdf.net_delta.max())
     net_out = gdf[gdf.net_delta < 0.0]
+    print("net out", len(net_out))
     v.polygons((0,2), net_out, title="%s migration model implied impact on population" % params["model_type"], xlim=[120000, 670000], ylim=[0, 550000], 
-      values=np.abs(net_out.net_delta), clim=(0, np.max(np.abs(net_out.net_delta))), cmap="Blues", edgecolor="darkgrey", linewidth=0.25)
+      values=np.abs(net_out.net_delta), clim=(0, np.max(np.abs(net_out.net_delta))), cmap="Blues", edgecolor="white", linewidth=0.1)
     # net immigration in red
     net_in = gdf[gdf.net_delta >= 0.0] 
+    print("net in", len(net_in))
     v.polygons((0,2), net_in, xlim=[120000, 670000], ylim=[0, 550000], 
       values=net_in.net_delta, clim=(0, np.max(net_in.net_delta)), cmap="Reds", edgecolor="darkgrey", linewidth=0.25)
 
