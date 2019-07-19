@@ -49,7 +49,14 @@ class Instance():
 
     self.disaggregated_output = params.get("disaggregated_output", False)
 
-    self.summary_output_file = os.path.join(params["output_dir"], "simim_%s_%s_%s" % (params["model_type"], params["base_projection"], os.path.basename(params["scenario"])))
+    self.summary_output_file = os.path.join(
+      params["output_dir"], 
+      "simim_%s_%s_%s_%s.csv" % (
+        params["model_type"], 
+        params["base_projection"], 
+        os.path.basename(params["scenario"]).replace(".csv", ""),
+        "-".join(params["attractors"])
+      ))
     self.custom_snpp_variant_name = "simim_%s" % os.path.basename(params["scenario"])[:-4]
     self.custom_snpp_variant = pd.DataFrame()
 
