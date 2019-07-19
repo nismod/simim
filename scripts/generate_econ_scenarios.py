@@ -4,6 +4,8 @@ import pandas as pd
 
 
 def main():
+  update_baseline_for_simim()
+
   scenario_names = ["0-unplanned", "1-new-cities", "2-expansion", "3-new-cities23", "4-expansion23"]
   arclads = pd.read_csv("data/scenarios/camkox_lads.csv").geo_code.unique()
   baseline = read_data("baseline", arclads)
@@ -85,6 +87,31 @@ def read_data(key, arclads):
   df = df[df.lad_uk_2016.isin(arclads)].set_index(["timestep", "lad_uk_2016"])
 
   return df
+
+
+def update_baseline_for_simim():  
+  df_emp = pd.read_csv("data/arc/arc_employment__baseline.csv")
+  df_gva = pd.read_csv("data/arc/arc_gva__baseline.csv")
+
+  # merge to single dataframe
+  df = df_gva.merge(
+    df_emp, on=["timestep", "lad_uk_2016"], how="left"
+  )
+  
+  baseline_for_simim = df.reset_index().rename(columns={
+    "timestep": "YEAR", 
+    "lad_uk_2016": "GEOGRAPHY_CODE", 
+    "employment": "JOBS", 
+    "gva": "GVA", 
+    "gva_per_sector": "GVA"
+  })[[
+     "YEAR", "GEOGRAPHY_CODE", "JOBS", "GVA"
+  ]]  
+  baseline_for_simim["GVA"] = baseline_for_simim["GVA"].round(6)
+  # convert from 1000s jobs to jobs
+  baseline_for_simim["JOBS"] = (baseline_for_simim["JOBS"] * 1000).round().astype(int)
+  baseline_for_simim.to_csv('./data/arc/arc_economic_baseline_for_simim.csv', index=False)
+
 
 if __name__ == '__main__':
   main()

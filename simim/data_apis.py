@@ -56,11 +56,7 @@ class Instance():
     self.snhp = SNHPData.SNHPData(self.cache_dir)
 
     print("Using economic baseline data supplied by Cambridge Econometrics")
-    gva = pd.read_csv("./data/arc/arc_gva__baseline.csv")
-    emp = pd.read_csv("./data/arc/arc_employment__baseline.csv")
-    self.economic_data = gva.merge(emp, on=["timestep", "lad_uk_2016"]).rename(
-      {"timestep": "YEAR", "lad_uk_2016": "GEOGRAPHY_CODE", "employment": "JOBS", "gva": "GVA", "gva_per_sector": "GVA"}, 
-      axis=1)
+    self.economic_data = pd.read_csv('./data/arc/arc_economic_baseline_for_simim.csv')
 
     # holder for shapefile when requested
     self.shapefile = None
