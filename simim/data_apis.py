@@ -215,16 +215,6 @@ class Instance():
   def get_jobs(self, year, geogs):
     return self.economic_data[(self.economic_data.YEAR == year) & (self.economic_data.GEOGRAPHY_CODE.isin(geogs))].drop("GVA", axis=1)
 
-  # # temporarily loading from csv pending response from nomisweb
-  # def get_gva(self, year, geogs):
-  #   gva_all = pd.read_csv("./data/ons_gva1997-2015.csv")
-  #   if year > 2015:
-  #     print("using latest available (2015) GVA data")
-  #     year = 2015
-
-  #   # filter LADs and specific year
-  #   return gva_all[gva_all.GEOGRAPHY_CODE.isin(geogs)][["GEOGRAPHY_CODE", str(year)]].rename({str(year): "GVA"}, axis=1)
-
   def get_gva(self, year, geogs):
     if year > 2050:
       print("using latest available (2050) GVA projection")
