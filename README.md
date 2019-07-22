@@ -28,6 +28,16 @@ The primary case study for this work will be the proposed east-west arc [[1]](#r
 - the methodology cannot capture changes in fertility, mortality and international migration that a scenario might be expected to affect.
 - the delta in migrations between the model under the scenario and the model under the baseline - which is key to generating the custom projection - is upscaled by the ratio of the total population in the LAD and the proportion that migrated in the previous year. This scaling produces changes in migration of the expected order of magnitude (given the housing/empoyment changes), but has yet to be fully justified.
 
+
+## Model fit parameters
+
+To assess model behavour, the key is to look at the fit params mu and (especially) alpha, which
+are printed before the timestepping starts. They should all be positive: negative means that a
+supposed attractor is actually repelling or vice versa. If factor combinations are somewhat
+unstable, for example if you see a particular negative value for alpha, remove that attraction
+factor, re-run and check the alpha values again. They might change in magnitude (but not sign).
+
+
 ## Further Development
 
 ### Generalised Employment Accessibility
