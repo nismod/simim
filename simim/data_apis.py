@@ -49,30 +49,33 @@ class Instance():
 
     self.disaggregated_output = params.get("disaggregated_output", False)
 
+    # record od scenario in output filename
+    if "od_scenario" in params:
+      od_scenario_key = "__" + params["od_scenario"].replace(".csv", "")
+    else:
+      od_scenario_key = ""
+
     self.summary_output_file = os.path.join(
       params["output_dir"], 
-      "simim_%s_%s_%s_%s.csv" % (
+      "simim_%s_%s_%s_%s%s.csv" % (
         params["model_type"], 
         params["base_projection"], 
         os.path.basename(params["scenario"]).replace(".csv", ""),
-        "-".join(params["attractors"])
+        "-".join(params["attractors"]),
+        od_scenario_key
       ))
     self.custom_snpp_variant_name = "simim_%s" % os.path.basename(params["scenario"])[:-4]
     self.custom_snpp_variant = pd.DataFrame()
 
     self.snhp = SNHPData.SNHPData(self.cache_dir)
 
-    print("Using economic baseline data supplied by Cambridge Econometrics")
+    print("Using economic baseline data supplied by Cambridge Econometrics", flush=True)
     self.economic_data = pd.read_csv('./data/arc/arc_economic_baseline_for_simim.csv')
 
     # holder for shapefile when requested
     self.shapefile = None
 
-    self.accessibility = pd.read_csv("./data/arc/accessBaseline.csv").rename(columns={
-      "ORIGIN_ZONE_CODE": "O_GEOGRAPHY_CODE",
-      "DESTINATION_ZONE_CODE": "D_GEOGRAPHY_CODE",
-      "GENERALISED_TRAVEL_COST": "ACCESSIBILITY"
-    })
+    self.accessibility = pd.read_csv("./data/access_baseline_road_rail.csv")
 
   def get_od(self):
 
@@ -111,7 +114,7 @@ class Instance():
       elif year <= self.snpp.max_year(country):
         data = self.snpp.aggregate(["GENDER", "C_AGE"], geogs[country], year)
       else:
-        print("%d population for %s is extrapolated" % (year, country))
+        # print("%d population for %s is extrapolated" % (year, country))
         data = self.snpp.extrapolagg(["GENDER", "C_AGE"], self.npp, geogs[country], year)
       alldata = alldata.append(data, ignore_index=True, sort=False)
 

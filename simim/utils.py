@@ -41,7 +41,7 @@ def calc_distances(gdf):
 def access_weighted_sum(dataset, colname, access_colname):
   # (travel) access-weighted sum of factor at destination
   # access-to-x[d] = Sum over o { access[o,d] * x[o] }
-  new_colname = "D_{}_ACCESS".format(colname)
+  new_colname = "D_{}_{}".format(colname, access_colname)
 
   # access to x[o] for each o,d 
   dataset[new_colname] = dataset["O_" + colname] * dataset[access_colname]

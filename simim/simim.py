@@ -59,12 +59,19 @@ def _compute_derived_factors(dataset):
   dataset[DESTINATION_PREFIX + "GVA_EX_LONDON"] = dataset[DESTINATION_PREFIX + "GVA"]
   min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
   dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
+  
+  # # Experiment with reducing London's JOBS-ACCESS 
+  # dataset[DESTINATION_PREFIX + "JOBS_EX_LONDON"] = dataset[DESTINATION_PREFIX + "JOBS"]
+  # dataset[ORIGIN_PREFIX + "JOBS_EX_LONDON"] = dataset[ORIGIN_PREFIX + "JOBS"]
+  # min_jobs = min(dataset[DESTINATION_PREFIX + "JOBS"])
+  # dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "JOBS_EX_LONDON"] = min_jobs 
+  # dataset.loc[dataset.O_GEOGRAPHY_CODE.str.startswith("E09"), ORIGIN_PREFIX + "JOBS_EX_LONDON"] = min_jobs 
+  # dataset = access_weighted_sum(dataset, "JOBS_EX_LONDON", "ACCESSIBILITY")
 
   # D_JOBS_ACCESS applies accessibility to OD trips which provides a measure of job
   # accessibility at destination. This attemptes to capture the possibility that a LAD may be
   # made a more attractive place to live by increased jobs in a nearby LAD
   dataset = access_weighted_sum(dataset, "JOBS", "ACCESSIBILITY")
-  dataset = access_weighted_sum(dataset, "GVA", "ACCESSIBILITY")
   # dataset.to_csv("debug_post-compute-derived-factors.csv")
   return dataset
 
@@ -272,7 +279,8 @@ def simim(params):
     # upscale delta by mover percentage at origin
     delta = pd.merge(delta, movers, left_on="o_lad16cd", right_index=True) 
     # TODO reinstate if necessary
-    delta["delta"] /= 0.08 #delta["MIGRATION_RATE"]
+    delta["delta"] /= 0.08
+    # delta["delta"] /= delta["MIGRATION_RATE"]
     delta = delta.drop(["PEOPLE", "MIGRATIONS", "MIGRATION_RATE"], axis=1)
     
     # remove in-LAD migrations and sum
