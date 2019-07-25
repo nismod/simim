@@ -46,6 +46,11 @@ def main():
       unpivot = unpivot.merge(col, on=["GEOGRAPHY_CODE", "YEAR"])
     
     scenario = unpivot
+    # # magic scaling factor to manipulate model
+    # scenario["GVA"] *= 10 
+    # scenario["JOBS"] *= 10
+    # scenario["HOUSEHOLDS"] *= 5
+    
     scenario["GVA"] = scenario["GVA"].round(6)
     scenario["JOBS"] = (scenario["JOBS"] * 1000).round().astype(int)  # convert from 1000s jobs to jobs
     scenario["HOUSEHOLDS"] = scenario["HOUSEHOLDS"].round().astype(int)

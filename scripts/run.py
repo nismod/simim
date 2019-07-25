@@ -94,7 +94,14 @@ def main(params):
 
     if not os.path.isdir("doc/img/run"):
       os.mkdir("doc/img/run")
-    v.to_png("doc/img/run/{}_{}.png".format(scenario, "-".join(params["attractors"])))
+      
+    # record od scenario in output filename
+    if "od_scenario" in params:
+      od_scenario_key = "__" + params["od_scenario"].replace(".csv", "")
+    else:
+      od_scenario_key = ""
+
+    v.to_png("doc/img/run/{}_{}{}.png".format(scenario, "-".join(params["attractors"]), od_scenario_key))
 
 if __name__ == "__main__":
 
