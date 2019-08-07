@@ -4,7 +4,7 @@
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
   "emitters": "PEOPLE",
-  "attractors": ["HOUSEHOLDS", "JOBS_ACCESSIBILITY", "GVA"],
+  "attractors": ["HOUSEHOLDS", "JOBS_ACCESSIBILITY", "GVA_EX_LONDON"],
   "cost": "DISTANCE",
   "base_projection": "ppp",
   "scenario_dir": "./data/scenarios",
