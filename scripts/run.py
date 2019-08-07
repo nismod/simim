@@ -102,7 +102,7 @@ def main(params):
       od_scenario_key = ""
 
     if "migration_scale_factor" in params:
-      scale = "__" + params["migration_scale_factor"]
+      scale = "__{}".format(params["migration_scale_factor"])
     else:
       scale = ""
 

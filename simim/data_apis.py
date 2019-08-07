@@ -56,13 +56,13 @@ class Instance():
       od_scenario_key = ""
 
     if "migration_scale_factor" in params:
-      scale = "__" + params["migration_scale_factor"]
+      scale = "__{}".format(params["migration_scale_factor"])
     else:
       scale = ""
 
     self.summary_output_file = os.path.join(
       params["output_dir"],
-      "simim_%s_%s_%s_%s%s.csv" % (
+      "simim_%s_%s_%s_%s%s%s.csv" % (
         params["model_type"],
         params["base_projection"],
         os.path.basename(params["scenario"]).replace(".csv", ""),
