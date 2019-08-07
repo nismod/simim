@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-""" 
+"""
 Creates a GB-wide lookup table of OA-LSOA-MSOA-LAD-CMLAD from scattered datasets
 For Scotland LSOA = DataZone, MSOA=Intermediate zone, LAD=Council Area
 CMLAD refers to census-merged LAD codes for E&W
@@ -10,18 +10,18 @@ import pandas as pd
 
 
 def update_lad_codes(df):
-  """ 
+  """
   Updates for 2013 boundary changes
   nomis etc use the updated codes
   """
   mapping = {
-    "E06000048": "E06000057", # Northumberland 
-    "E07000097": "E07000242", # E.Herts 
-    "E07000100": "E07000240", # St.Albans 
-    "E07000101": "E07000243", # Stevenage 
-    "E07000104": "E07000241", # Wel.Hat 
+    "E06000048": "E06000057", # Northumberland
+    "E07000097": "E07000242", # E.Herts
+    "E07000100": "E07000240", # St.Albans
+    "E07000101": "E07000243", # Stevenage
+    "E07000104": "E07000241", # Wel.Hat
     "E08000020": "E08000037", # Gateshead
-  } 
+  }
   df.replace(mapping, inplace=True)
   # LAD_lookup contains newer codes
   # geog_lookup contains older codes
@@ -61,9 +61,9 @@ geog_lookup = geog_lookup.merge(lookup, how="left")
 geog_lookup.loc[geog_lookup.LAD.str.startswith("S"), "LAD_CM"] = geog_lookup[geog_lookup.LAD.str.startswith("S")].LAD
 
 # From https://www.nrscotland.gov.uk/files//geography/2011-census-indexes-csv.zip
-sc_lad_names = pd.read_csv("../../Mistral/persistent_data/COUNCIL AREA 2011 LOOKUP.csv").rename({"CouncilArea2011Code": "LAD"}, axis=1) 
+sc_lad_names = pd.read_csv("../../Mistral/persistent_data/COUNCIL AREA 2011 LOOKUP.csv").rename({"CouncilArea2011Code": "LAD"}, axis=1)
 geog_lookup = geog_lookup.merge(sc_lad_names[["LAD", "CouncilArea2011Name"]], how="left")
-geog_lookup.loc[geog_lookup.LAD_NAME.isnull(), "LAD_NAME"] = geog_lookup[geog_lookup.LAD_NAME.isnull()].CouncilArea2011Name 
+geog_lookup.loc[geog_lookup.LAD_NAME.isnull(), "LAD_NAME"] = geog_lookup[geog_lookup.LAD_NAME.isnull()].CouncilArea2011Name
 geog_lookup.drop("CouncilArea2011Name", axis=1, inplace=True)
 
 # ensure nomis codes are integer not floats

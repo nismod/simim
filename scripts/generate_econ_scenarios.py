@@ -42,19 +42,19 @@ def main():
       col = df[[key]].reset_index() \
         .melt(id_vars="GEOGRAPHY_CODE") \
         [["GEOGRAPHY_CODE", "YEAR", "value"]] \
-        .rename(columns={"value": key})        
+        .rename(columns={"value": key})
       unpivot = unpivot.merge(col, on=["GEOGRAPHY_CODE", "YEAR"])
-    
+
     scenario = unpivot
     # # magic scaling factor to manipulate model
-    # scenario["GVA"] *= 10 
+    # scenario["GVA"] *= 10
     # scenario["JOBS"] *= 10
     # scenario["HOUSEHOLDS"] *= 5
-    
+
     scenario["GVA"] = scenario["GVA"].round(6)
     scenario["JOBS"] = (scenario["JOBS"] * 1000).round().astype(int)  # convert from 1000s jobs to jobs
     scenario["HOUSEHOLDS"] = scenario["HOUSEHOLDS"].round().astype(int)
-    
+
     # Filter to include only 2019 and later
     scenario = scenario[scenario.YEAR >= 2019]
 
@@ -94,7 +94,7 @@ def read_data(key, arclads):
   return df
 
 
-def update_baseline_for_simim():  
+def update_baseline_for_simim():
   df_emp = pd.read_csv("data/arc/arc_employment__baseline.csv")
   df_gva = pd.read_csv("data/arc/arc_gva__baseline.csv")
 
@@ -102,16 +102,16 @@ def update_baseline_for_simim():
   df = df_gva.merge(
     df_emp, on=["timestep", "lad_uk_2016"], how="left"
   )
-  
+
   baseline_for_simim = df.reset_index().rename(columns={
-    "timestep": "YEAR", 
-    "lad_uk_2016": "GEOGRAPHY_CODE", 
-    "employment": "JOBS", 
-    "gva": "GVA", 
+    "timestep": "YEAR",
+    "lad_uk_2016": "GEOGRAPHY_CODE",
+    "employment": "JOBS",
+    "gva": "GVA",
     "gva_per_sector": "GVA"
   })[[
      "YEAR", "GEOGRAPHY_CODE", "JOBS", "GVA"
-  ]]  
+  ]]
   baseline_for_simim["GVA"] = baseline_for_simim["GVA"].round(6)
   # convert from 1000s jobs to jobs
   baseline_for_simim["JOBS"] = (baseline_for_simim["JOBS"] * 1000).round().astype(int)

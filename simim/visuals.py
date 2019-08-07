@@ -35,7 +35,7 @@ class Visual:
       ax.set_title(title)
     ax.plot(x, y, marker, **kwargs)
 
-  def stacked_bar(self, panel, dataset, category_name, xaxis_name, yaxis_name, category_mapping=None, 
+  def stacked_bar(self, panel, dataset, category_name, xaxis_name, yaxis_name, category_mapping=None,
                   title=None, xlabel=None, ylabel=None, **kwargs):
 
     categories = dataset[category_name].unique()

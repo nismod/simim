@@ -26,7 +26,7 @@ def _merge_factor(dataset, data, factors):
   return dataset
 
 def _get_delta(fetch_func, name, year, geogs):
-  data_prev = fetch_func(year - 1, geogs).rename({name: name + "_PREV"},axis=1) 
+  data_prev = fetch_func(year - 1, geogs).rename({name: name + "_PREV"},axis=1)
   data = fetch_func(year, geogs)
   data = data.merge(data_prev, on="GEOGRAPHY_CODE")
   data[name + "_DELTA"] = data[name] - data[name + "_PREV"]
@@ -58,14 +58,14 @@ def _compute_derived_factors(dataset):
   # London's high GVA does not prevent migration so we artificially reduce it
   dataset[DESTINATION_PREFIX + "GVA_EX_LONDON"] = dataset[DESTINATION_PREFIX + "GVA"]
   min_gva = min(dataset[DESTINATION_PREFIX + "GVA"])
-  dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva 
-  
-  # # Experiment with reducing London's JOBS-ACCESS 
+  dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "GVA_EX_LONDON"] = min_gva
+
+  # # Experiment with reducing London's JOBS-ACCESS
   # dataset[DESTINATION_PREFIX + "JOBS_EX_LONDON"] = dataset[DESTINATION_PREFIX + "JOBS"]
   # dataset[ORIGIN_PREFIX + "JOBS_EX_LONDON"] = dataset[ORIGIN_PREFIX + "JOBS"]
   # min_jobs = min(dataset[DESTINATION_PREFIX + "JOBS"])
-  # dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "JOBS_EX_LONDON"] = min_jobs 
-  # dataset.loc[dataset.O_GEOGRAPHY_CODE.str.startswith("E09"), ORIGIN_PREFIX + "JOBS_EX_LONDON"] = min_jobs 
+  # dataset.loc[dataset.D_GEOGRAPHY_CODE.str.startswith("E09"), DESTINATION_PREFIX + "JOBS_EX_LONDON"] = min_jobs
+  # dataset.loc[dataset.O_GEOGRAPHY_CODE.str.startswith("E09"), ORIGIN_PREFIX + "JOBS_EX_LONDON"] = min_jobs
   # dataset = access_weighted_sum(dataset, "JOBS_EX_LONDON", "ACCESSIBILITY")
 
   # D_JOBS_ACCESS applies accessibility to OD trips which provides a measure of job
@@ -94,7 +94,7 @@ def simim(params):
     od_scenario_filename = None
 
   scenario_data = scenario.Scenario(
-    os.path.join(params["scenario_dir"], params["scenario"]), 
+    os.path.join(params["scenario_dir"], params["scenario"]),
     params["emitters"] + params["attractors"],
     od_scenario_filename)
 
@@ -120,7 +120,7 @@ def simim(params):
   od_2011 = od_2011[(~od_2011.O_GEOGRAPHY_CODE.isnull()) & (~od_2011.O_GEOGRAPHY_CODE.isnull())]
   od_2011.drop(["ADDRESS_ONE_YEAR_AGO_CODE", "USUAL_RESIDENCE_CODE"], axis=1, inplace=True)
 
-  # census merged LAD migrations are duplicated, so proportion them accoring to 2011 population ratios, 
+  # census merged LAD migrations are duplicated, so proportion them accoring to 2011 population ratios,
   # converting back to nearest integer (model requires int observations)
   cmpops = input_data.get_people(2011, ["E09000001","E09000033"])
   city_westminster_ratio = cmpops[cmpops.GEOGRAPHY_CODE == "E09000001"].PEOPLE.values[0] / cmpops.PEOPLE.sum()
@@ -168,7 +168,7 @@ def simim(params):
   # get no of people who moved (by origin) for each LAD - for later use as a scaling factor for migrations
   movers = od_2011[["MIGRATIONS", "O_GEOGRAPHY_CODE"]].groupby("O_GEOGRAPHY_CODE").sum()
   movers = input_data.get_people(2011, geogs).set_index("GEOGRAPHY_CODE").join(movers)
-  # Fudge factor 
+  # Fudge factor
   movers["MIGRATION_RATE"] = movers["MIGRATIONS"] / movers["PEOPLE"]
 
   print("Overall migration rate is %1.2f%%" % (100 * movers["MIGRATIONS"].sum() / movers["PEOPLE"].sum()))
@@ -185,7 +185,7 @@ def simim(params):
   if end_year < scenario_data.timeline()[0]:
     raise RuntimeError("end year for model run cannot be before start year of scenario")
 
-  # assemble initial model 
+  # assemble initial model
   baseline_snpp = input_data.get_people(start_year, geogs)
   snhp = input_data.get_households(start_year, geogs)
 
@@ -195,7 +195,7 @@ def simim(params):
   # Merge attractors and emitters *all at both origin AND destination*
   dataset = _merge_factor(od_2011, baseline_snpp, ["PEOPLE"])
   #print(dataset.head())
-  dataset = _merge_factor(dataset, snhp, ["HOUSEHOLDS"]) 
+  dataset = _merge_factor(dataset, snhp, ["HOUSEHOLDS"])
   dataset = _merge_factor(dataset, jobs, ["JOBS"])
   dataset = _merge_factor(dataset, gva, ["GVA"])
 
@@ -247,7 +247,7 @@ def simim(params):
   print("beta = %f" % model.beta())
 
   # main loop
-  for year in range(start_year, end_year + 1): 
+  for year in range(start_year, end_year + 1):
 
     # if scenario compute changed migrations
     if year in scenario_data.timeline():
@@ -258,7 +258,7 @@ def simim(params):
 
       # NOTE derived factors update here under scenario; previously derived values done with
       # baseline updates below
-      
+
       # apply scenario and recompute derived factors
       model.dataset = scenario_data.apply(model.dataset, year)
       model.dataset = _compute_derived_factors(model.dataset)
@@ -274,7 +274,7 @@ def simim(params):
       # model.dataset.to_csv("debug_dataset-post-scenario-{}.csv".format(year))
     else:
       model.dataset["CHANGED_MIGRATIONS"] = 0
-  
+
     #ox = ox.append(model.dataset[(model.dataset.O_GEOGRAPHY_CODE == model.dataset.D_GEOGRAPHY_CODE) & (model.dataset.O_GEOGRAPHY_CODE == "E07000178")])
 
     # compute migration inflows and outflow changes
@@ -283,12 +283,12 @@ def simim(params):
                           "delta": model.dataset.CHANGED_MIGRATIONS})
 
     # upscale delta by mover percentage at origin
-    delta = pd.merge(delta, movers, left_on="o_lad16cd", right_index=True) 
+    delta = pd.merge(delta, movers, left_on="o_lad16cd", right_index=True)
     # TODO reinstate if necessary
     delta["delta"] /= 0.08
     # delta["delta"] /= delta["MIGRATION_RATE"]
     delta = delta.drop(["PEOPLE", "MIGRATIONS", "MIGRATION_RATE"], axis=1)
-    
+
     # remove in-LAD migrations and sum
     o_delta = delta.groupby("d_lad16cd").sum().reset_index().rename({"d_lad16cd": "lad16cd", "delta": "o_delta"}, axis=1)
     d_delta = delta.groupby("o_lad16cd").sum().reset_index().rename({"o_lad16cd": "lad16cd", "delta": "d_delta"}, axis=1)
@@ -311,7 +311,7 @@ def simim(params):
       .merge(custom_snpp[["GEOGRAPHY_CODE", "PEOPLE"]].rename({"PEOPLE": "O_PEOPLE"}, axis=1), left_on="O_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
       .merge(custom_snpp[["GEOGRAPHY_CODE", "PEOPLE"]].rename({"PEOPLE": "D_PEOPLE"}, axis=1), left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE") \
       .drop({"GEOGRAPHY_CODE_x", "GEOGRAPHY_CODE_y"}, axis=1)
-      
+
     # TODO IDEA: merge emitters/attractors back on to custom_snpp for output/comparison as calculated
 
     input_data.append_output(custom_snpp, year)
@@ -339,7 +339,7 @@ def simim(params):
       gva = _get_delta(input_data.get_gva, "GVA", year+1, geogs)
       model.dataset = _merge_factor(model.dataset, gva, ["GVA_DELTA"])
       model.dataset = _apply_delta(model.dataset, "GVA")
-      
+
       # derived factors
       model.dataset = _compute_derived_factors(model.dataset)
 
