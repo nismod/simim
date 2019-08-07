@@ -220,6 +220,12 @@ def simim(params):
   # dataset is now sunk into model, delete the original
   del dataset
 
+  # scale migrations by dividing by this factor - assumes model naturally represents this
+  # percentage of actual migrations
+  migration_scale_factor = 0.08
+  if "migration_scale_factor" in params:
+    migration_scale_factor = params["migration_scale_factor"]
+
   emitter_values = get_named_values(model.dataset, params["emitters"])
   attractor_values = get_named_values(model.dataset, params["attractors"])
   # check recalculation matches the fitted values
