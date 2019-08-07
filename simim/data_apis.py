@@ -55,6 +55,11 @@ class Instance():
     else:
       od_scenario_key = ""
 
+    if "migration_scale_factor" in params:
+      scale = "__" + params["migration_scale_factor"]
+    else:
+      scale = ""
+
     self.summary_output_file = os.path.join(
       params["output_dir"],
       "simim_%s_%s_%s_%s%s.csv" % (
@@ -62,7 +67,8 @@ class Instance():
         params["base_projection"],
         os.path.basename(params["scenario"]).replace(".csv", ""),
         "-".join(params["attractors"]),
-        od_scenario_key
+        od_scenario_key,
+        scale
       ))
     self.custom_snpp_variant_name = "simim_%s" % os.path.basename(params["scenario"])[:-4]
     self.custom_snpp_variant = pd.DataFrame()
