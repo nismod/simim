@@ -16,7 +16,7 @@ def main():
 
     # calculate diff from baseline, rounded as int
     scenario = scenario.join(baseline, lsuffix="_scen", rsuffix="_base")
-    scenario["GVA"] = (scenario.gva_per_sector_scen - scenario.gva_per_sector_base)
+    scenario["GVA"] = (scenario.gva_scen - scenario.gva_base)
     scenario["JOBS"] = (scenario.employment_scen - scenario.employment_base)
     scenario["HOUSEHOLDS"] = (scenario.dwellings_scen - scenario.dwellings_base)
     scenario = scenario[
@@ -107,8 +107,7 @@ def update_baseline_for_simim():
     "timestep": "YEAR",
     "lad_uk_2016": "GEOGRAPHY_CODE",
     "employment": "JOBS",
-    "gva": "GVA",
-    "gva_per_sector": "GVA"
+    "gva": "GVA"
   })[[
      "YEAR", "GEOGRAPHY_CODE", "JOBS", "GVA"
   ]]
