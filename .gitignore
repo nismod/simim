@@ -105,8 +105,10 @@ venv.bak/
 
 # ignore output and cache
 data/output
+data/output-data
 data/cache
 doc/img/run*/*.png
+debug*.csv
 
 # ignore unused arc inputs
 data/arc/*_by_sector_*

@@ -14,7 +14,7 @@ def main():
   # np.random.seed(0)
   subset = np.random.choice(dataset.O_GEOGRAPHY_CODE.unique(), size=5, replace=False)
   print(subset)
-  
+
   # filter the subset, needs to be sorted by D then O for both prod and attr
   dataset = dataset[(dataset.O_GEOGRAPHY_CODE.isin(subset)) & (dataset.D_GEOGRAPHY_CODE.isin(subset))] \
     .sort_values(["D_GEOGRAPHY_CODE", "O_GEOGRAPHY_CODE"])
@@ -29,7 +29,7 @@ def main():
 
   # NxN with M attrs
   # k  mu     alpha beta
-  # 0  1..N-1   M    N+M   
+  # 0  1..N-1   M    N+M
 
   k = prod.params[0]
   mu = np.append(0, prod.params[1:len(subset)])

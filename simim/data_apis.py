@@ -28,7 +28,7 @@ import simim.utils as utils
 class Instance():
   def __init__(self, params):
 
-    self.coverage = { "EW": ukpoputils.EW, "GB": ukpoputils.GB, "UK": ukpoputils.UK }.get(params["coverage"]) 
+    self.coverage = { "EW": ukpoputils.EW, "GB": ukpoputils.GB, "UK": ukpoputils.UK }.get(params["coverage"])
     if not self.coverage:
       raise RuntimeError("invalid coverage: %s" % params["coverage"])
 
@@ -39,8 +39,8 @@ class Instance():
     self.census_ni = NISRA.NISRA(self.cache_dir)
     # population projections
     self.mye = MYEData.MYEData(self.cache_dir)
-    self.snpp = SNPPData.SNPPData(self.cache_dir) 
-    self.npp = NPPData.NPPData(self.cache_dir) 
+    self.snpp = SNPPData.SNPPData(self.cache_dir)
+    self.npp = NPPData.NPPData(self.cache_dir)
     # households
     self.baseline = params["base_projection"]
 
@@ -49,30 +49,39 @@ class Instance():
 
     self.disaggregated_output = params.get("disaggregated_output", False)
 
+    # record od scenario in output filename
+    if "od_scenario" in params:
+      od_scenario_key = "__" + params["od_scenario"].replace(".csv", "")
+    else:
+      od_scenario_key = ""
+
+    if "migration_scale_factor" in params:
+      scale = "__{}".format(params["migration_scale_factor"])
+    else:
+      scale = ""
+
     self.summary_output_file = os.path.join(
-      params["output_dir"], 
-      "simim_%s_%s_%s_%s.csv" % (
-        params["model_type"], 
-        params["base_projection"], 
+      params["output_dir"],
+      "simim_%s_%s_%s_%s%s%s.csv" % (
+        params["model_type"],
+        params["base_projection"],
         os.path.basename(params["scenario"]).replace(".csv", ""),
-        "-".join(params["attractors"])
+        "-".join(params["attractors"]),
+        od_scenario_key,
+        scale
       ))
     self.custom_snpp_variant_name = "simim_%s" % os.path.basename(params["scenario"])[:-4]
     self.custom_snpp_variant = pd.DataFrame()
 
     self.snhp = SNHPData.SNHPData(self.cache_dir)
 
-    print("Using economic baseline data supplied by Cambridge Econometrics")
+    print("Using economic baseline data supplied by Cambridge Econometrics", flush=True)
     self.economic_data = pd.read_csv('./data/arc/arc_economic_baseline_for_simim.csv')
 
     # holder for shapefile when requested
     self.shapefile = None
 
-    self.accessibility = pd.read_csv("./data/arc/accessBaseline.csv").rename(columns={
-      "ORIGIN_ZONE_CODE": "O_GEOGRAPHY_CODE",
-      "DESTINATION_ZONE_CODE": "D_GEOGRAPHY_CODE",
-      "GENERALISED_TRAVEL_COST": "ACCESSIBILITY"
-    })
+    self.accessibility = pd.read_csv("./data/access_baseline_road_rail.csv")
 
   def get_od(self):
 
@@ -101,7 +110,7 @@ class Instance():
       geogs = [geogs]
 
     geogs = ukpoputils.split_by_country(geogs)
-    
+
     alldata = pd.DataFrame()
     for country in geogs:
       # TODO variants...
@@ -111,7 +120,7 @@ class Instance():
       elif year <= self.snpp.max_year(country):
         data = self.snpp.aggregate(["GENDER", "C_AGE"], geogs[country], year)
       else:
-        print("%d population for %s is extrapolated" % (year, country))
+        # print("%d population for %s is extrapolated" % (year, country))
         data = self.snpp.extrapolagg(["GENDER", "C_AGE"], self.npp, geogs[country], year)
       alldata = alldata.append(data, ignore_index=True, sort=False)
 
@@ -148,7 +157,7 @@ class Instance():
       # print(households_ni)
       # print(len(households_ni))
       households = households.append(households_ni)
-      
+
     households.rename({"OBS_VALUE": "HOUSEHOLDS"}, axis=1, inplace=True)
     return households
 
@@ -196,7 +205,7 @@ class Instance():
   # def get_jobs(self, year, geogs):
   #   """
   #   NM57 has both total jobs and density*, but raw data needs to be unstacked for ease of use
-  #   *nomisweb: "Jobs density is the numbers of jobs per resident aged 16-64. For example, 
+  #   *nomisweb: "Jobs density is the numbers of jobs per resident aged 16-64. For example,
   #   a job density of 1.0 would mean that there is one job for every resident of working age."
   #   """
 
@@ -217,7 +226,7 @@ class Instance():
   #   # aggregate census-merged LADs 'E06000053' 'E09000001'
   #   jobs.loc[jobs.GEOGRAPHY_CODE=="E09000033", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E09000001","E09000033"])].OBS_VALUE.sum()
   #   jobs.loc[jobs.GEOGRAPHY_CODE=="E06000052", "OBS_VALUE"] = jobs[jobs.GEOGRAPHY_CODE.isin(["E06000052","E06000053"])].OBS_VALUE.sum()
-    
+
   #   # TODO filter by geogs rather than hard-coding GB
   #   jobs = jobs[jobs.GEOGRAPHY_CODE.isin(geogs)]
 
@@ -245,8 +254,8 @@ class Instance():
     return od
 
   def get_shapefile(self, zip_url=None):
-    """ 
-    Gets and stores a shapefile from the given URL 
+    """
+    Gets and stores a shapefile from the given URL
     same shapefile can be subsequently retrieved by calling this function without the zip_url arg
     Fails if no url is supplied and none has previously been specified
     """
@@ -260,9 +269,9 @@ class Instance():
           for chunk in response.iter_content(chunk_size=1024):
             fd.write(chunk)
         print("downloaded OK")
-      else: 
+      else:
         print("using cached data: %s" % local_zipfile)
-      
+
       zip = zipfile.ZipFile(local_zipfile)
       #print(zip.namelist())
       # find a shapefile in the zip...
@@ -274,7 +283,7 @@ class Instance():
       self.shapefile = gpd.read_file(os.path.join(self.cache_dir, shapefile))
     return self.shapefile
 
-  def get_lad_lookup(self): 
+  def get_lad_lookup(self):
     lookup = pd.read_csv("./data/gb_geog_lookup.csv.gz")
     # only need the CMLAD->LAD mapping
     return lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
@@ -292,7 +301,7 @@ class Instance():
     print("Summary at horizon year: %d" % horizon)
     print("In-region population changes:")
     inreg = self.custom_snpp_variant[(self.custom_snpp_variant.PROJECTED_YEAR_NAME == horizon)
-                                   & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario.geographies()))] 
+                                   & (self.custom_snpp_variant.GEOGRAPHY_CODE.isin(scenario.geographies()))]
     print("TOTAL: %.0f baseline vs %.0f scenario (increase of %.0f)"
       % (inreg.PEOPLE_SNPP.sum(), inreg.PEOPLE.sum(), inreg.PEOPLE.sum() - inreg.PEOPLE_SNPP.sum()))
     print(inreg)
@@ -309,7 +318,7 @@ class Instance():
     self.custom_snpp_variant["RELATIVE_DELTA"] = self.custom_snpp_variant.PEOPLE / self.custom_snpp_variant.PEOPLE_SNPP
     self.custom_snpp_variant.to_csv(self.summary_output_file, index=False)
 
-    # disaggregated (by age & gender) output is large and requires work to generate so not produced unless specifically requested in config 
+    # disaggregated (by age & gender) output is large and requires work to generate so not produced unless specifically requested in config
     if self.disaggregated_output:
       print("registering disaggregated custom SNPP variant data as %s with ukpopulation (cache_dir=%s)" % (self.custom_snpp_variant_name, self.cache_dir))
       # get the baseline data by age/gender for all geogs and years

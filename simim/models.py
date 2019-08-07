@@ -41,25 +41,25 @@ class Model:
     self.num_emit = 1 if np.isscalar(self.xo_cols) else len(self.xo_cols)
     self.num_attr = 1 if np.isscalar(self.xd_cols) else len(self.xd_cols)
     # for constrained models the above values need to be changed to num of unique O or D less 1
-  
+
     if self.model_type == "gravity":
-      self.impl = Gravity(self.dataset[self.y_col].values, 
-                          self.dataset[self.xo_cols].values, 
-                          self.dataset[self.xd_cols].values, 
+      self.impl = Gravity(self.dataset[self.y_col].values,
+                          self.dataset[self.xo_cols].values,
+                          self.dataset[self.xd_cols].values,
                           self.dataset[self.cost_col].values, self.model_subtype, Quasi=True)
     elif self.model_type == "production":
       assert(self.num_emit == 1)
       self.num_emit = len(self.dataset[self.xo_cols[0]].unique()) - 1
-      self.impl = Production(self.dataset[self.y_col].values, 
-                             self.dataset[self.xo_cols].values, 
-                             self.dataset[self.xd_cols].values, 
+      self.impl = Production(self.dataset[self.y_col].values,
+                             self.dataset[self.xo_cols].values,
+                             self.dataset[self.xd_cols].values,
                              self.dataset[self.cost_col].values, self.model_subtype, Quasi=True)
     elif self.model_type == "attraction":
       assert(self.num_attr == 1)
       self.num_attr = len(self.dataset[self.xd_cols[0]].unique()) - 1
-      self.impl = Attraction(self.dataset[self.y_col].values, 
-                             self.dataset[self.xd_cols].values, 
-                             self.dataset[self.xo_cols].values, 
+      self.impl = Attraction(self.dataset[self.y_col].values,
+                             self.dataset[self.xd_cols].values,
+                             self.dataset[self.xo_cols].values,
                              self.dataset[self.cost_col].values, self.model_subtype, Quasi=True)
     else: #model_type == "doubly":
       assert(self.num_emit == 1)
@@ -67,9 +67,9 @@ class Model:
       assert(self.num_attr == 1)
       self.num_attr = len(self.dataset[self.xd_cols[0]].unique()) - 1
       raise NotImplementedError("Doubly constrained model is too constrained")
-      self.impl = Doubly(self.dataset[self.y_col].values, 
-                         self.dataset[self.xo_cols].values, 
-                         self.dataset[self.xd_cols].values, 
+      self.impl = Doubly(self.dataset[self.y_col].values,
+                         self.dataset[self.xo_cols].values,
+                         self.dataset[self.xd_cols].values,
                          self.dataset[self.cost_col].values, self.model_subtype)
 
     # append the model-fitted flows to the dataframe, prefixed with "MODEL_"
@@ -78,7 +78,7 @@ class Model:
 
   # The params array structure, based on N emissiveness factors and M attractiveness factors:
   #
-  #   0 1 ... M M+1 ... N N+1 ... N+M+1 N+M+2 
+  #   0 1 ... M M+1 ... N N+1 ... N+M+1 N+M+2
   # G k m ... m  m ...  m  a ...    a     b
   # P k m ... m  m ...  m  a ...    a     b
   # A k a ... a  m ...  m  m ...    m     b
@@ -110,7 +110,7 @@ class Model:
       xo = [xo]
     mu = self.mu()
     assert len(mu) == self.num_emit
-    assert len(xo) == self.num_emit 
+    assert len(xo) == self.num_emit
     xo_mu = xo[0] ** mu[0]
     for i in range(1,self.num_emit):
       xo_mu = xo_mu * xo[i] ** mu[i]
@@ -121,7 +121,7 @@ class Model:
       xd = [xd]
     alpha = self.alpha()
     assert len(alpha) == self.num_attr
-    assert len(xd) == self.num_attr 
+    assert len(xd) == self.num_attr
     xd_alpha = xd[0] ** alpha[0]
     for i in range(1,self.num_attr):
       xd_alpha = xd_alpha * xd[i] ** alpha[i]

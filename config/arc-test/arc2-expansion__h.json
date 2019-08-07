@@ -1,0 +1,19 @@
+{
+  "coverage": "GB",
+  "model_type": "gravity",
+  "model_subtype": "pow",
+  "observation": "MIGRATIONS",
+  "emitters": "PEOPLE",
+  "attractors": ["HOUSEHOLDS"],
+  "cost": "DISTANCE",
+  "base_projection": "ppp",
+  "scenario_dir": "./data/scenarios",
+  "scenario": "scenario2-expansion__h.csv",
+  "start_year": 2015,
+  "end_year": 2050,
+  "cache_dir": "./data/cache",
+  "output_dir": "./data/output",
+  "odmatrix": false,
+  "disaggregated_output": false,
+  "graphics": false
+}

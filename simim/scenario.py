@@ -10,10 +10,10 @@ class Scenario():
     # zonal data (essential)
     self.data = pd.read_csv(filename)
 
-    # od data (optional) used for transport accessibility 
+    # od data (optional) used for transport accessibility
     #
     # does not need to be the full n*n entries (380*380 for GB LADs), but the submatrix needs
-    # to be applied correctly to the overall travel cost matrix 
+    # to be applied correctly to the overall travel cost matrix
     if od_filename is not None:
       self.od_data = pd.read_csv(od_filename)
     else:
@@ -25,19 +25,19 @@ class Scenario():
       model_factors = [model_factors]
 
     self.factors = [
-      f for f in self.data.columns.values 
+      f for f in self.data.columns.values
       if f not in ["GEOGRAPHY_CODE", "YEAR"]
     ]
 
     self.od_factors = [
-      f for f in self.od_data.columns.values 
+      f for f in self.od_data.columns.values
       if f not in ["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE", "YEAR"]
     ]
 
     missing = [
-      f for f in model_factors 
+      f for f in model_factors
       if f not in self.data.columns and f not in self.od_data.columns
-    ] 
+    ]
 
     print("Model factors:", model_factors)
     print("Scenario zonal factors:", self.factors)
@@ -84,7 +84,7 @@ class Scenario():
 
   def apply(self, dataset, year):
     """Apply scenario updates to the dataset
-    
+
     If there's no scenario for a year, reuse the most recent figures
     """
     self.update(year)
@@ -105,7 +105,7 @@ class Scenario():
       for factor in self.factors:
         dataset["O_" + factor] += dataset[factor]
       dataset.drop(self.factors, axis=1, inplace=True)
-      
+
       # ... then destinations
       dataset = dataset.merge(
         self.current_scenario, how="left", left_on="D_GEOGRAPHY_CODE", right_on="GEOGRAPHY_CODE"
@@ -122,7 +122,7 @@ class Scenario():
       print("No OD scenario changes for %d" % year)
     else:
       print("Updated OD scenario to %d" % year)
-      # apply od scenario to the dataset 
+      # apply od scenario to the dataset
       dataset.drop(self.od_factors, axis=1, inplace=True)
       dataset = dataset.merge(
         self.current_od_scenario, how="left", on=["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]

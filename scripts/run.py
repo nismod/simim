@@ -21,12 +21,12 @@ def main(params):
     # start timing
     start_time = time.time()
 
-    # TODO reorganise the data returned 
+    # TODO reorganise the data returned
     model, data, odmatrix = simim.simim(params)
 
     print("done. Exec time(s): ", time.time() - start_time)
 
-  except RuntimeError as error: 
+  except RuntimeError as error:
     print("RUN FAILED: ", error)
     return
 
@@ -39,14 +39,14 @@ def main(params):
     v = visuals.Visual(2,3)
 
     # N.Herts = "E07000099"
-    lad = "E07000178" 
+    lad = "E07000178"
     lad_name = "Oxford"
     c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == lad]
     v.line((0,0), c.PROJECTED_YEAR_NAME, c.PEOPLE_SNPP, "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact on {} ({})".format(lad_name, lad))
     v.line((0,0), c.PROJECTED_YEAR_NAME, c.PEOPLE, "r", label="scenario")
     v.panel((0,0)).legend() #("b","r"), ("base", "scenario"))
-    
-    lad = "E07000008" 
+
+    lad = "E07000008"
     lad_name = "Cambridge"
     c = data.custom_snpp_variant[data.custom_snpp_variant.GEOGRAPHY_CODE == lad]
     v.line((0,1), c.PROJECTED_YEAR_NAME, c.PEOPLE_SNPP, "k", label="baseline", xlabel="Year", ylabel="Population", title="Impact on {} ({})".format(lad_name, lad))
@@ -63,16 +63,16 @@ def main(params):
     print("net_delta between", gdf.net_delta.min(), gdf.net_delta.max())
     net_out = gdf[gdf.net_delta <= 0.0]
     print("net out", len(net_out))
-    v.polygons((0,2), net_out, title="%s migration model implied impact on population" % params["model_type"], xlim=[120000, 670000], ylim=[0, 550000], 
+    v.polygons((0,2), net_out, title="%s migration model implied impact on population" % params["model_type"], xlim=[120000, 670000], ylim=[0, 550000],
       values=np.abs(net_out.net_delta), clim=(0, np.max(np.abs(net_out.net_delta))), cmap="Blues", edgecolor="white", linewidth=0.1)
     # net immigration in red
-    net_in = gdf[gdf.net_delta > 0.0] 
+    net_in = gdf[gdf.net_delta > 0.0]
     print("net in", len(net_in))
-    v.polygons((0,2), net_in, xlim=[120000, 670000], ylim=[0, 550000], 
+    v.polygons((0,2), net_in, xlim=[120000, 670000], ylim=[0, 550000],
       values=net_in.net_delta, clim=(0, np.max(net_in.net_delta)), cmap="Reds", edgecolor="white", linewidth=0.1)
 
     # model fit
-    v.scatter((1,0), model.dataset.MIGRATIONS, model.impl.yhat, "b.", markersize=3, 
+    v.scatter((1,0), model.dataset.MIGRATIONS, model.impl.yhat, "b.", markersize=3,
       title="%d %s migration model fit: R^2=%.2f" % (year, params["model_type"], model.impl.pseudoR2))
     v.line((1,0), [0,max(model.dataset.MIGRATIONS)], [0,max(model.dataset.MIGRATIONS)], "k", xlabel="Observed", ylabel="Model", linewidth=0.25)
 
@@ -94,7 +94,21 @@ def main(params):
 
     if not os.path.isdir("doc/img/run"):
       os.mkdir("doc/img/run")
-    v.to_png("doc/img/run/{}_{}.png".format(scenario, "-".join(params["attractors"])))
+
+    # record od scenario in output filename
+    if "od_scenario" in params:
+      od_scenario_key = "__" + params["od_scenario"].replace(".csv", "")
+    else:
+      od_scenario_key = ""
+
+    if "migration_scale_factor" in params:
+      scale = "__{}".format(params["migration_scale_factor"])
+    else:
+      scale = ""
+
+    v.to_png(
+      "doc/img/run/{}_{}{}{}.png".format(
+        scenario, "-".join(params["attractors"]), od_scenario_key, scale))
 
 if __name__ == "__main__":
 
