@@ -108,6 +108,7 @@ data/output
 data/output-data
 data/cache
 doc/img/run*/*.png
+doc/img/run/**/*.png
 debug*.csv
 
 # ignore unused arc inputs
@@ -117,6 +118,7 @@ data/arc/gb_baseline.csv
 data/arc/uk_baseline.csv
 # ignore base arc data
 data/arc/arc_dwellings*.csv
+data/arc/arc_population*.csv
 data/arc/arc_gva*.csv
 data/arc/arc_employment*.csv
 data/arc/accessScenario*.csv
