@@ -49,21 +49,30 @@ class Instance():
 
     self.disaggregated_output = params.get("disaggregated_output", False)
 
-    self.summary_output_file = os.path.join(params["output_dir"], "simim_%s_%s_%s" % (params["model_type"], params["base_projection"], os.path.basename(params["scenario"])))
+    self.summary_output_file = os.path.join(
+      params["output_dir"], 
+      "simim_%s_%s_%s_%s.csv" % (
+        params["model_type"], 
+        params["base_projection"], 
+        os.path.basename(params["scenario"]).replace(".csv", ""),
+        "-".join(params["attractors"])
+      ))
     self.custom_snpp_variant_name = "simim_%s" % os.path.basename(params["scenario"])[:-4]
     self.custom_snpp_variant = pd.DataFrame()
 
     self.snhp = SNHPData.SNHPData(self.cache_dir)
 
     print("Using economic baseline data supplied by Cambridge Econometrics")
-    gva = pd.read_csv("./data/arc/arc_gva__baseline.csv")
-    emp = pd.read_csv("./data/arc/arc_employment__baseline.csv")
-    self.economic_data = gva.merge(emp, on=["timestep", "lad_uk_2016"]).rename(
-      {"timestep": "YEAR", "lad_uk_2016": "GEOGRAPHY_CODE", "employment": "JOBS", "gva": "GVA", "gva_per_sector": "GVA"}, 
-      axis=1)
+    self.economic_data = pd.read_csv('./data/arc/arc_economic_baseline_for_simim.csv')
 
     # holder for shapefile when requested
     self.shapefile = None
+
+    self.accessibility = pd.read_csv("./data/arc/accessBaseline.csv").rename(columns={
+      "ORIGIN_ZONE_CODE": "O_GEOGRAPHY_CODE",
+      "DESTINATION_ZONE_CODE": "D_GEOGRAPHY_CODE",
+      "GENERALISED_TRAVEL_COST": "ACCESSIBILITY"
+    })
 
   def get_od(self):
 
@@ -219,31 +228,20 @@ class Instance():
   def get_jobs(self, year, geogs):
     return self.economic_data[(self.economic_data.YEAR == year) & (self.economic_data.GEOGRAPHY_CODE.isin(geogs))].drop("GVA", axis=1)
 
-  # # temporarily loading from csv pending response from nomisweb
-  # def get_gva(self, year, geogs):
-  #   gva_all = pd.read_csv("./data/ons_gva1997-2015.csv")
-  #   if year > 2015:
-  #     print("using latest available (2015) GVA data")
-  #     year = 2015
-
-  #   # filter LADs and specific year
-  #   return gva_all[gva_all.GEOGRAPHY_CODE.isin(geogs)][["GEOGRAPHY_CODE", str(year)]].rename({str(year): "GVA"}, axis=1)
-
   def get_gva(self, year, geogs):
     if year > 2050:
       print("using latest available (2050) GVA projection")
       year = 2050
     return self.economic_data[(self.economic_data.YEAR == year) & (self.economic_data.GEOGRAPHY_CODE.isin(geogs))].drop("JOBS", axis=1)
 
-  def get_generalised_travel_cost(self):
-    od = pd.read_csv("./data/od_gen_travel_cost.csv")
+  def get_accessibility(self, dataset):
+    od = self.accessibility
 
-    # merge option instead (requires dataset to be passed in)
-    # for now use the same structure as migration data and weights of 1 for intra-LAD, ~infinite otherwise
-    # dummy this data for now (so that the code can be written)
+    # Dummy data option (requires dataset to be passed in)
+    # use the same structure as migration data and accessibility of 1 for intra-LAD, 0 otherwise
     # od = dataset[["O_GEOGRAPHY_CODE", "D_GEOGRAPHY_CODE"]].copy()
-    # od["GEN_TRAVEL_COST"] = 1e9
-    # od.loc[od.O_GEOGRAPHY_CODE == od.D_GEOGRAPHY_CODE, "GEN_TRAVEL_COST"] = 1.0
+    # od["ACCESSIBILITY"] = 0.0
+    # od.loc[od.O_GEOGRAPHY_CODE == od.D_GEOGRAPHY_CODE, "ACCESSIBILITY"] = 1.0
     return od
 
   def get_shapefile(self, zip_url=None):
@@ -277,7 +275,6 @@ class Instance():
     return self.shapefile
 
   def get_lad_lookup(self): 
-
     lookup = pd.read_csv("./data/gb_geog_lookup.csv.gz")
     # only need the CMLAD->LAD mapping
     return lookup[["LAD_CM", "LAD"]].drop_duplicates().reset_index(drop=True)
@@ -311,7 +308,6 @@ class Instance():
     self.custom_snpp_variant.drop(["PEOPLE_PREV", "PEOPLE_DELTA", "net_delta"], axis=1, inplace=True)
     self.custom_snpp_variant["RELATIVE_DELTA"] = self.custom_snpp_variant.PEOPLE / self.custom_snpp_variant.PEOPLE_SNPP
     self.custom_snpp_variant.to_csv(self.summary_output_file, index=False)
-    #.drop(["net_delta","net_delta_prev","PEOPLE_prev"], axis=1).to_csv(self.output_file, index=False)
 
     # disaggregated (by age & gender) output is large and requires work to generate so not produced unless specifically requested in config 
     if self.disaggregated_output:

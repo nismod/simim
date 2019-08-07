@@ -1,7 +1,6 @@
 {
   "coverage": "GB",
   "model_type": "gravity",
-  "start_year": 2019,
   "end_year": 2030,
   "model_subtype": "pow",
   "observation": "MIGRATIONS",
@@ -13,5 +12,5 @@
   "scenario_dir": "./data/scenarios",
   "cache_dir": "./data/cache",
   "output_dir": "./data/output",
-  "graphics": false
+  "graphics": true
 }
