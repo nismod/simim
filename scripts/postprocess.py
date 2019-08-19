@@ -59,6 +59,8 @@ def main(params):
 
   # read, rename, add baseline, output ready for smif
   output_files = list(glob.glob(os.path.join(output_dir, "simim_*.csv")))
+  dfs = []
+
   for output_file in output_files:
     key = os.path.basename(
       output_file
@@ -70,7 +72,7 @@ def main(params):
     print(key)
 
     scenario = load_simim_output(output_file, key)
-    scenario = scale(scenario, baseline, arc_lads)
+    scenario, arc_only = scale(scenario, baseline, arc_lads)
     scenario = scenario[scenario.timestep > base_year]
     scenario = rename_columns(scenario)
     scenario = pd.concat(
@@ -80,6 +82,15 @@ def main(params):
     scenario = prepare_for_output(scenario)
     fname = "arc_population__{}.csv".format(key)
     scenario.to_csv(os.path.join(output_dir, fname), index=False)
+
+    arc_only['scenario'] = key
+    dfs.append(arc_only)
+
+  summary = pd.concat(dfs, axis=0)
+  summary = summary[summary.timestep.isin([2015, 2030, 2050])]
+  summary['scaled_pph'] = summary.scaled_population / summary.dwellings
+  pivot = summary.pivot_table(index=['lad_uk_2016', 'lad16nm', 'timestep'], columns=['scenario'])
+  pivot.to_csv(os.path.join(output_dir, "summarise_simim_population.csv"))
 
 
 def scale(scenario, baseline, arc_lads):
@@ -114,6 +125,10 @@ def scale(scenario, baseline, arc_lads):
   dataset["scaled_population"] = dataset.population * dataset.people_scale_factor
   # rename, filter, concatenate back into rest of scenario output
   dataset = dataset[dataset.scenario != "baseline"]
+
+  # copy for loater comparative use
+  arc_only = dataset.copy()
+
   dataset = dataset[["timestep","lad_uk_2016","scaled_population"]] \
     .rename(columns={"scaled_population": "population"})
 
@@ -124,7 +139,8 @@ def scale(scenario, baseline, arc_lads):
     dataset,
     other_scenario
   ], axis=0, sort=True)
-  return dataset
+
+  return dataset, arc_only
 
 
 def get_mye(lad_cds):
