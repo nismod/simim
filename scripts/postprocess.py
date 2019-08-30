@@ -53,14 +53,38 @@ def main(params):
   addition = baseline[
     (baseline.timestep <= base_year) | baseline.lad_uk_2016.str.startswith("N")
   ].copy()
+  non_arc = baseline[~baseline.lad_uk_2016.isin(arc_lads.geo_code)].copy()
 
   baseline_dwl = pd.read_csv("./data/arc/arc_dwellings__baseline.csv")
   baseline = baseline.merge(baseline_dwl, on=["timestep", "lad_uk_2016"])
+  arc15 = baseline[
+    baseline.lad_uk_2016.isin(arc_lads.geo_code) & (baseline.timestep == base_year)].copy()
+  arc15['RELATIVE_DELTA'] = 1
 
   # read, rename, add baseline, output ready for smif
   output_files = list(glob.glob(os.path.join(output_dir, "simim_*.csv")))
   dfs = []
 
+  # new cities (23k/30k dwellings per year)
+  # new settlements: directly from [dwellings * average people per household]
+  # where pph is calculated per-LAD from 2015 numbers
+  arc15['pph'] = arc15.population / arc15.dwellings
+
+  for key in ('1-new-cities', '3-new-cities23'):
+    scenario_key = '{}-from-dwellings'.format(key)
+    print(scenario_key)
+
+    scenario, arc_only = calculate_from_base_year_ppd(
+      key, arc15, non_arc, output_dir, base_year, arc_lads)
+
+    scenario = prepare_for_output(scenario)
+    fname = "arc_population__{}.csv".format(scenario_key)
+    scenario.to_csv(os.path.join(output_dir, fname), index=False)
+
+    arc_only['scenario'] = scenario_key
+    dfs.append(arc_only)
+
+  # all scenarios, using simim outputs scaled to meet 'expected' total Arc population
   for output_file in output_files:
     key = os.path.basename(
       output_file
@@ -76,7 +100,7 @@ def main(params):
     scenario = scenario[scenario.timestep > base_year]
     scenario = rename_columns(scenario)
     scenario = pd.concat(
-      [scenario, addition], axis=0, sort=False
+      [scenario, addition], axis=0, sort=True
     )
 
     scenario = prepare_for_output(scenario)
@@ -86,11 +110,36 @@ def main(params):
     arc_only['scenario'] = key
     dfs.append(arc_only)
 
-  summary = pd.concat(dfs, axis=0)
+  summary = pd.concat(dfs, axis=0, sort=True)
   summary = summary[summary.timestep.isin([2015, 2030, 2050])]
   summary['scaled_pph'] = summary.scaled_population / summary.dwellings
   pivot = summary.pivot_table(index=['lad_uk_2016', 'lad16nm', 'timestep'], columns=['scenario'])
   pivot.to_csv(os.path.join(output_dir, "summarise_simim_population.csv"))
+
+
+def calculate_from_base_year_ppd(key, arc15, non_arc, output_dir, base_year, arc_lads):
+  # construct filename
+  prefix = 'simim_gravity_ppp_scenario'
+  suffix = '__gjh_D_HOUSEHOLDS-D_JOBS_ACCESSIBILITY-D_GVA_EX_LONDON__od_rail_b1__0.06.csv'
+  fname = os.path.join(output_dir, '{}{}{}'.format(prefix, key, suffix))
+
+  assert len(arc15) == len(arc_lads), ("LADs", len(arc15), len(arc_lads))
+
+  # load and filter to arc only, after 2015
+  df = load_simim_output(fname, '1-new-cities')
+  df = df[df.timestep > base_year]
+  df = df[df.lad_uk_2016.isin(arc_lads.geo_code)].copy()
+
+  # join 2015 people-per-dwelling, calculate population
+  df = df.merge(arc15[['lad_uk_2016','pph']], on=['lad_uk_2016'], how='left')
+  df.population = df.dwellings * df.pph
+  df = df.append(arc15)
+  df['people_scale_factor'] = 1
+  df['scaled_population'] = df.population
+
+  # include base year
+  scenario = pd.concat([df[['timestep', 'lad_uk_2016', 'population']], non_arc], axis=0)
+  return scenario, df
 
 
 def scale(scenario, baseline, arc_lads):
@@ -126,7 +175,7 @@ def scale(scenario, baseline, arc_lads):
   # rename, filter, concatenate back into rest of scenario output
   dataset = dataset[dataset.scenario != "baseline"]
 
-  # copy for loater comparative use
+  # copy for later comparative use
   arc_only = dataset.copy()
 
   dataset = dataset[["timestep","lad_uk_2016","scaled_population"]] \
