@@ -6,7 +6,15 @@ import pandas as pd
 def main():
   update_baseline_for_simim()
 
-  scenario_names = ["0-unplanned", "1-new-cities", "2-expansion", "3-new-cities23", "4-expansion23"]
+  scenario_names = [
+    "0-unplanned",
+    "1-new-cities",
+    "2-expansion",
+    "3-new-cities23",
+    "4-expansion23",
+    "5-new-cities23-nb",
+    "6-new-cities30-nb",
+  ]
   arclads = pd.read_csv("data/scenarios/camkox_lads.csv").geo_code.unique()
   baseline = read_data("baseline", arclads)
 
@@ -27,12 +35,14 @@ def main():
     years = list(reversed(sorted(scenario.YEAR.unique())))
 
     df = scenario.pivot(index="GEOGRAPHY_CODE", columns="YEAR", values=["GVA", "JOBS", "HOUSEHOLDS"])
-    for i, year in enumerate(years):
-      for key in ["GVA", "JOBS", "HOUSEHOLDS"]:
+    for key in ["GVA", "JOBS", "HOUSEHOLDS"]:
+      dfk = df[key].copy()
+      for i, year in enumerate(years):
         if year == scenario.YEAR.min():
-          df[key][year] = 0
+          dfk[year] = 0
         else:
-          df[key][year] = (df[key][year] - df[key][years[i + 1]])
+          dfk[year] = dfk[year] - dfk[years[i + 1]]
+      df[key] = dfk
 
     unpivot = df[["GVA"]].reset_index() \
         .melt(id_vars="GEOGRAPHY_CODE") \
@@ -70,7 +80,7 @@ def read_data(key, arclads):
   """Read csvs and merge to single dataframe
   """
   # HACK hard-code match for economics scenarios against 23k dwellings scenarios
-  if key == "3-new-cities23":
+  if "new-cities" in key:
     econ_key = "1-new-cities"
   elif key == "4-expansion23":
     econ_key = "2-expansion"
