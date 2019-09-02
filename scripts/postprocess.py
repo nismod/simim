@@ -110,8 +110,24 @@ def main(params):
     arc_only['scenario'] = key
     dfs.append(arc_only)
 
+  # concat summary
   summary = pd.concat(dfs, axis=0, sort=True)
   summary = summary[summary.timestep.isin([2015, 2030, 2050])]
+
+  # calculate summary if dwellings follow population
+  for key in ('0-unplanned', '1-new-cities', '2-expansion', '3-new-cities23', '4-expansion23'):
+    scenario_key = '{}-dwellings-after'.format(key)
+    print(scenario_key)
+
+    arc_only = summary[summary.scenario == key].copy()
+    arc_only = arc_only.drop('pph', axis=1)
+    arc_only = arc_only.merge(arc15[['lad_uk_2016','pph']], on=['lad_uk_2016'], how='left')
+    arc_only.dwellings = arc_only.scaled_population / arc_only.pph
+
+    arc_only['scenario'] = scenario_key
+    summary = summary.append(arc_only, sort=True)
+
+
   summary['scaled_pph'] = summary.scaled_population / summary.dwellings
   pivot = summary.pivot_table(index=['lad_uk_2016', 'lad16nm', 'timestep'], columns=['scenario'])
   pivot.to_csv(os.path.join(output_dir, "summarise_simim_population.csv"))
@@ -133,12 +149,12 @@ def calculate_from_base_year_ppd(key, arc15, non_arc, output_dir, base_year, arc
   # join 2015 people-per-dwelling, calculate population
   df = df.merge(arc15[['lad_uk_2016','pph']], on=['lad_uk_2016'], how='left')
   df.population = df.dwellings * df.pph
-  df = df.append(arc15)
+  df = df.append(arc15, sort=True)
   df['people_scale_factor'] = 1
   df['scaled_population'] = df.population
 
   # include base year
-  scenario = pd.concat([df[['timestep', 'lad_uk_2016', 'population']], non_arc], axis=0)
+  scenario = pd.concat([df[['timestep', 'lad_uk_2016', 'population']], non_arc], axis=0, sort=True)
   return scenario, df
 
 
