@@ -142,7 +142,7 @@ def calculate_from_base_year_ppd(key, arc15, non_arc, output_dir, base_year, arc
   assert len(arc15) == len(arc_lads), ("LADs", len(arc15), len(arc_lads))
 
   # load and filter to arc only, after 2015
-  df = load_simim_output(fname, '1-new-cities')
+  df = load_simim_output(fname, key)
   df = df[df.timestep > base_year]
   df = df[df.lad_uk_2016.isin(arc_lads.geo_code)].copy()
 
