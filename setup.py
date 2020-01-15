@@ -15,6 +15,9 @@ def check_env():
   if os.getenv("CONDA_DEFAULT"):
     print("Installing in conda env: %s" % os.getenv("CONDA_DEFAULT"))
     return
+  if os.getenv("CONDA_DEFAULT_ENV"):
+    print("Installing in conda env: %s" % os.getenv("CONDA_DEFAULT_ENV"))
+    return
   raise EnvironmentError("Not in a virtualenv or conda environment, aborting installation")
 check_env()
 
